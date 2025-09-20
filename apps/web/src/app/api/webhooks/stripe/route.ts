@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { constructWebhookEvent, handleWebhookEvent } from '@ai-sales-agent/stripe';
+import { constructWebhookEvent } from '@/lib/stripe';
 import prisma from '@/lib/prisma';
 import type { Stripe } from 'stripe';
+import { getPlanFromPriceId, PLAN_FEATURES } from '@/lib/stripe';
+
+// Disable body parsing, we need raw body for Stripe webhook signature verification
+export const runtime = 'nodejs';
 
 // Stripe webhook handler
 export async function POST(request: NextRequest) {
@@ -9,6 +13,7 @@ export async function POST(request: NextRequest) {
   const signature = request.headers.get('stripe-signature');
 
   if (!signature) {
+    console.error('Missing stripe-signature header');
     return NextResponse.json(
       { error: 'Missing stripe-signature header' },
       { status: 400 }
@@ -35,6 +40,8 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+
+  console.log(`Processing webhook event: ${event.type}`);
 
   // Handle the event
   try {
@@ -63,6 +70,12 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'customer.subscription.trial_will_end': {
+        const subscription = event.data.object as Stripe.Subscription;
+        await handleTrialWillEnd(subscription);
+        break;
+      }
+
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
         await handleInvoicePaymentSucceeded(invoice);
@@ -72,6 +85,12 @@ export async function POST(request: NextRequest) {
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
         await handleInvoicePaymentFailed(invoice);
+        break;
+      }
+
+      case 'payment_method.attached': {
+        const paymentMethod = event.data.object as Stripe.PaymentMethod;
+        await handlePaymentMethodAttached(paymentMethod);
         break;
       }
 
@@ -102,22 +121,19 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   const subscriptionId = session.subscription as string;
 
   // Find user by Stripe customer ID
-  const user = await prisma.user.findFirst({
-    where: {
-      subscription: {
-        stripeCustomerId: customerId,
-      },
-    },
+  const subscription = await prisma.subscription.findFirst({
+    where: { stripeCustomerId: customerId },
+    include: { user: true },
   });
 
-  if (!user) {
-    console.error('User not found for customer:', customerId);
+  if (!subscription) {
+    console.error('Subscription not found for customer:', customerId);
     return;
   }
 
   // Update subscription in database
   await prisma.subscription.update({
-    where: { userId: user.id },
+    where: { id: subscription.id },
     data: {
       stripeSubscriptionId: subscriptionId,
       status: 'ACTIVE',
@@ -126,7 +142,10 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     },
   });
 
-  console.log('Subscription activated for user:', user.id);
+  // Send welcome email
+  // TODO: Implement email sending via SendGrid
+
+  console.log('Subscription activated for user:', subscription.user.id);
 }
 
 // Handle subscription created
@@ -135,46 +154,61 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
 
   const customerId = subscription.customer as string;
 
-  // Find user by Stripe customer ID
-  const user = await prisma.user.findFirst({
-    where: {
-      subscription: {
-        stripeCustomerId: customerId,
-      },
-    },
+  // Find subscription by Stripe customer ID
+  const dbSubscription = await prisma.subscription.findFirst({
+    where: { stripeCustomerId: customerId },
+    include: { user: true },
   });
 
-  if (!user) {
-    console.error('User not found for customer:', customerId);
+  if (!dbSubscription) {
+    console.error('Subscription not found for customer:', customerId);
     return;
   }
 
-  // Map Stripe price to plan
-  const planMap: Record<string, any> = {
-    [process.env.STRIPE_PRICE_STARTER_MONTHLY || '']: 'STARTER',
-    [process.env.STRIPE_PRICE_PRO_MONTHLY || '']: 'PRO',
-    [process.env.STRIPE_PRICE_BUSINESS_MONTHLY || '']: 'BUSINESS',
-  };
-
+  // Get plan from price ID
   const priceId = subscription.items.data[0]?.price.id;
-  const plan = planMap[priceId] || 'STARTER';
+  const plan = getPlanFromPriceId(priceId) || 'STARTER';
 
   // Update user plan
   await prisma.user.update({
-    where: { id: user.id },
+    where: { id: dbSubscription.userId },
     data: { plan },
   });
 
   // Update subscription
   await prisma.subscription.update({
-    where: { userId: user.id },
+    where: { id: dbSubscription.id },
     data: {
       stripeSubscriptionId: subscription.id,
       stripePriceId: priceId,
       plan,
-      status: subscription.status.toUpperCase() as any,
+      status: mapStripeStatus(subscription.status),
+      trialEndsAt: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+    },
+  });
+
+  // Initialize or update usage limits
+  const planFeatures = PLAN_FEATURES[plan];
+  await prisma.subscriptionUsage.upsert({
+    where: { subscriptionId: dbSubscription.id },
+    create: {
+      subscriptionId: dbSubscription.id,
+      prospectsLimit: planFeatures.prospectsLimit,
+      icpsLimit: planFeatures.icpsLimit,
+      sequencesLimit: planFeatures.sequencesLimit,
+      messagesLimit: planFeatures.messagesLimit,
+      periodStart: new Date(subscription.current_period_start * 1000),
+      periodEnd: new Date(subscription.current_period_end * 1000),
+    },
+    update: {
+      prospectsLimit: planFeatures.prospectsLimit,
+      icpsLimit: planFeatures.icpsLimit,
+      sequencesLimit: planFeatures.sequencesLimit,
+      messagesLimit: planFeatures.messagesLimit,
+      periodStart: new Date(subscription.current_period_start * 1000),
+      periodEnd: new Date(subscription.current_period_end * 1000),
     },
   });
 }
@@ -183,7 +217,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   console.log('Processing customer.subscription.updated:', subscription.id);
 
-  // Update subscription in database
+  // Find subscription in database
   const dbSubscription = await prisma.subscription.findFirst({
     where: { stripeSubscriptionId: subscription.id },
   });
@@ -193,13 +227,39 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     return;
   }
 
+  // Get plan from price ID
+  const priceId = subscription.items.data[0]?.price.id;
+  const plan = getPlanFromPriceId(priceId) || 'STARTER';
+
+  // Update subscription
   await prisma.subscription.update({
     where: { id: dbSubscription.id },
     data: {
-      status: subscription.status.toUpperCase() as any,
+      stripePriceId: priceId,
+      plan,
+      status: mapStripeStatus(subscription.status),
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      trialEndsAt: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+    },
+  });
+
+  // Update user plan
+  await prisma.user.update({
+    where: { id: dbSubscription.userId },
+    data: { plan },
+  });
+
+  // Update usage limits if plan changed
+  const planFeatures = PLAN_FEATURES[plan];
+  await prisma.subscriptionUsage.update({
+    where: { subscriptionId: dbSubscription.id },
+    data: {
+      prospectsLimit: planFeatures.prospectsLimit,
+      icpsLimit: planFeatures.icpsLimit,
+      sequencesLimit: planFeatures.sequencesLimit,
+      messagesLimit: planFeatures.messagesLimit,
     },
   });
 }
@@ -208,7 +268,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   console.log('Processing customer.subscription.deleted:', subscription.id);
 
-  // Update subscription status
+  // Find subscription in database
   const dbSubscription = await prisma.subscription.findFirst({
     where: { stripeSubscriptionId: subscription.id },
   });
@@ -218,6 +278,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     return;
   }
 
+  // Update subscription status
   await prisma.subscription.update({
     where: { id: dbSubscription.id },
     data: {
@@ -231,6 +292,41 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     where: { id: dbSubscription.userId },
     data: { plan: 'STARTER' },
   });
+
+  // Reset usage limits to STARTER plan
+  const starterFeatures = PLAN_FEATURES.STARTER;
+  await prisma.subscriptionUsage.update({
+    where: { subscriptionId: dbSubscription.id },
+    data: {
+      prospectsLimit: starterFeatures.prospectsLimit,
+      icpsLimit: starterFeatures.icpsLimit,
+      sequencesLimit: starterFeatures.sequencesLimit,
+      messagesLimit: starterFeatures.messagesLimit,
+    },
+  });
+
+  // Send cancellation email
+  // TODO: Implement email sending via SendGrid
+}
+
+// Handle trial will end (3 days before)
+async function handleTrialWillEnd(subscription: Stripe.Subscription) {
+  console.log('Processing customer.subscription.trial_will_end:', subscription.id);
+
+  // Find subscription in database
+  const dbSubscription = await prisma.subscription.findFirst({
+    where: { stripeSubscriptionId: subscription.id },
+    include: { user: true },
+  });
+
+  if (!dbSubscription) {
+    console.error('Subscription not found:', subscription.id);
+    return;
+  }
+
+  // Send trial ending email
+  // TODO: Implement email sending via SendGrid
+  console.log(`Trial ending soon for user: ${dbSubscription.user.email}`);
 }
 
 // Handle successful invoice payment
@@ -239,7 +335,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 
   if (!invoice.subscription) return;
 
-  // Create payment record
+  // Find subscription
   const subscription = await prisma.subscription.findFirst({
     where: { stripeSubscriptionId: invoice.subscription as string },
   });
@@ -249,6 +345,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
     return;
   }
 
+  // Create payment record
   await prisma.payment.create({
     data: {
       subscriptionId: subscription.id,
@@ -262,6 +359,14 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
       paidAt: new Date(),
     },
   });
+
+  // Update subscription status to ACTIVE if it was PAST_DUE
+  if (subscription.status === 'PAST_DUE') {
+    await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: { status: 'ACTIVE' },
+    });
+  }
 }
 
 // Handle failed invoice payment
@@ -270,20 +375,65 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
 
   if (!invoice.subscription) return;
 
-  // Update subscription status if payment failed multiple times
-  if (invoice.attempt_count >= 3) {
-    const subscription = await prisma.subscription.findFirst({
-      where: { stripeSubscriptionId: invoice.subscription as string },
+  // Find subscription
+  const dbSubscription = await prisma.subscription.findFirst({
+    where: { stripeSubscriptionId: invoice.subscription as string },
+    include: { user: true },
+  });
+
+  if (!dbSubscription) {
+    console.error('Subscription not found for invoice:', invoice.id);
+    return;
+  }
+
+  // Create failed payment record
+  await prisma.payment.create({
+    data: {
+      subscriptionId: dbSubscription.id,
+      stripePaymentId: invoice.payment_intent as string || invoice.id,
+      stripeInvoiceId: invoice.id,
+      amount: invoice.amount_paid,
+      currency: invoice.currency,
+      status: 'FAILED',
+      failureReason: invoice.last_finalization_error?.message || 'Payment failed',
+      billingPeriodStart: new Date(invoice.period_start * 1000),
+      billingPeriodEnd: new Date(invoice.period_end * 1000),
+    },
+  });
+
+  // Update subscription status based on attempt count
+  if (invoice.attempt_count >= 2) {
+    await prisma.subscription.update({
+      where: { id: dbSubscription.id },
+      data: { status: 'PAST_DUE' },
     });
 
-    if (subscription) {
-      await prisma.subscription.update({
-        where: { id: subscription.id },
-        data: { status: 'PAST_DUE' },
-      });
-
-      // TODO: Send email notification to user
-      console.log('Subscription marked as past due:', subscription.id);
-    }
+    // Send payment failed email
+    // TODO: Implement email sending via SendGrid
+    console.log(`Payment failed for user: ${dbSubscription.user.email}, attempts: ${invoice.attempt_count}`);
   }
+}
+
+// Handle payment method attached
+async function handlePaymentMethodAttached(paymentMethod: Stripe.PaymentMethod) {
+  console.log('Processing payment_method.attached:', paymentMethod.id);
+
+  // Log for audit purposes
+  console.log(`Payment method ${paymentMethod.id} attached to customer ${paymentMethod.customer}`);
+}
+
+// Helper function to map Stripe status to our enum
+function mapStripeStatus(stripeStatus: string): any {
+  const statusMap: Record<string, string> = {
+    'trialing': 'TRIALING',
+    'active': 'ACTIVE',
+    'past_due': 'PAST_DUE',
+    'canceled': 'CANCELED',
+    'unpaid': 'UNPAID',
+    'incomplete': 'INCOMPLETE',
+    'incomplete_expired': 'INCOMPLETE',
+    'paused': 'PAST_DUE',
+  };
+
+  return statusMap[stripeStatus] || 'INCOMPLETE';
 }
