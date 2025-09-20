@@ -1,0 +1,11 @@
+Email,First Name,Last Name,Job Title,Company,Industry,Company Size,Location,LinkedIn URL,Website,Phone,Notes
+john.smith@techcorp.com,John,Smith,CEO,TechCorp Solutions,Technology,Large,San Francisco CA,https://linkedin.com/in/johnsmith,https://techcorp.com,+1-415-555-0101,Decision maker - high priority
+sarah.johnson@innovate.io,Sarah,Johnson,CTO,Innovate.io,Software,Medium,New York NY,https://linkedin.com/in/sarahjohnson,https://innovate.io,+1-212-555-0102,Technical buyer - needs product demo
+michael.brown@enterprise.com,Michael,Brown,VP Sales,Enterprise Systems,Technology,Enterprise,Seattle WA,https://linkedin.com/in/michaelbrown,https://enterprise.com,+1-206-555-0103,Has budget approved for Q1
+emily.davis@startup.ai,Emily,Davis,Founder,Startup AI,Artificial Intelligence,Startup,Austin TX,https://linkedin.com/in/emilydavis,https://startup.ai,+1-512-555-0104,Early stage but high growth potential
+robert.wilson@globaltech.com,Robert,Wilson,Director of IT,GlobalTech,Technology,Enterprise,Chicago IL,https://linkedin.com/in/robertwilson,https://globaltech.com,+1-312-555-0105,Evaluating solutions - comparing vendors
+jennifer.martinez@cloudserv.net,Jennifer,Martinez,COO,CloudServ Networks,Cloud Computing,Large,Los Angeles CA,https://linkedin.com/in/jennifermartinez,https://cloudserv.net,+1-310-555-0106,Interested in enterprise plan
+david.taylor@dataanalytics.co,David,Taylor,Head of Engineering,Data Analytics Co,Data Science,Medium,Boston MA,https://linkedin.com/in/davidtaylor,https://dataanalytics.co,+1-617-555-0107,Technical evaluation phase
+lisa.anderson@fintech.com,Lisa,Anderson,CFO,FinTech Solutions,Financial Services,Large,Miami FL,https://linkedin.com/in/lisaanderson,https://fintech.com,+1-305-555-0108,Budget holder - needs ROI data
+james.thomas@healthtech.org,James,Thomas,Product Manager,HealthTech Innovations,Healthcare,Medium,Denver CO,https://linkedin.com/in/jamesthomas,https://healthtech.org,+1-303-555-0109,Influencer - gathering requirements
+maria.garcia@edtech.edu,Maria,Garcia,CEO,EdTech Platform,Education,Startup,San Diego CA,https://linkedin.com/in/mariagarcia,https://edtech.edu,+1-619-555-0110,Rapid growth - immediate need
