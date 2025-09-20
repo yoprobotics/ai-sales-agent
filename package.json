@@ -1,1 +1,34 @@
-{\n  \"name\": \"ai-sales-agent-root\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"description\": \"AI-powered B2B prospecting SaaS platform\",\n  \"workspaces\": [\n    \"apps/*\",\n    \"packages/*\"\n  ],\n  \"scripts\": {\n    \"build\": \"turbo run build\",\n    \"dev\": \"turbo run dev\",\n    \"lint\": \"turbo run lint\",\n    \"test\": \"turbo run test\",\n    \"typecheck\": \"turbo run typecheck\",\n    \"clean\": \"turbo run clean\",\n    \"format\": \"prettier --write \\\"**/*.{ts,tsx,md}\\\"\",\n    \"build:web\": \"cd apps/web && npm run build\",\n    \"start:web\": \"cd apps/web && npm start\"\n  },\n  \"devDependencies\": {\n    \"@turbo/gen\": \"^1.10.12\",\n    \"@types/node\": \"^20.5.2\",\n    \"eslint\": \"^8.48.0\",\n    \"prettier\": \"^3.0.0\",\n    \"turbo\": \"^1.10.12\",\n    \"typescript\": \"^5.2.2\"\n  },\n  \"packageManager\": \"npm@10.0.0\",\n  \"engines\": {\n    \"node\": \">=20.0.0\"\n  }\n}\n
+{
+  "name": "ai-sales-agent-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-powered B2B prospecting SaaS platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "build:web": "npm install && cd apps/web && npm run build",
+    "start:web": "cd apps/web && npm start",
+    "vercel-build": "npm run build:web"
+  },
+  "devDependencies": {
+    "@turbo/gen": "^1.10.12",
+    "@types/node": "^20.5.2",
+    "eslint": "^8.48.0",
+    "prettier": "^3.0.0",
+    "turbo": "^1.10.12",
+    "typescript": "^5.2.2"
+  },
+  "packageManager": "npm@10.0.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
