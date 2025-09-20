@@ -1,49 +1,51 @@
-/** @type {import('jest').Config} */
 module.exports = {
   projects: [
-    '<rootDir>/apps/web/jest.config.js',
-    '<rootDir>/apps/api/jest.config.js',
-    '<rootDir>/packages/*/jest.config.js'
+    {
+      displayName: 'web',
+      testMatch: ['<rootDir>/apps/web/**/*.test.{ts,tsx}'],
+      preset: 'ts-jest',
+      testEnvironment: 'jsdom',
+      moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/apps/web/src/$1',
+        '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+      },
+      setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+    },
+    {
+      displayName: 'api',
+      testMatch: ['<rootDir>/apps/api/**/*.test.ts'],
+      preset: 'ts-jest',
+      testEnvironment: 'node',
+      moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/apps/api/src/$1',
+      },
+      globalSetup: '<rootDir>/apps/api/src/__tests__/setup.ts',
+      globalTeardown: '<rootDir>/apps/api/src/__tests__/teardown.ts',
+    },
+    {
+      displayName: 'core',
+      testMatch: ['<rootDir>/packages/core/**/*.test.ts'],
+      preset: 'ts-jest',
+      testEnvironment: 'node',
+    },
   ],
   collectCoverageFrom: [
-    'apps/**/src/**/*.{ts,tsx}',
-    'packages/**/src/**/*.{ts,tsx}',
+    '**/*.{ts,tsx}',
     '!**/*.d.ts',
     '!**/node_modules/**',
     '!**/.next/**',
     '!**/dist/**',
     '!**/coverage/**',
-    '!**/generated/**'
+    '!**/*.config.{js,ts}',
   ],
-  coverageThreshold: {
+  coverageThresholds: {
     global: {
       branches: 60,
       functions: 60,
       lines: 60,
-      statements: 60
-    }
+      statements: 60,
+    },
   },
-  coverageReporters: ['text', 'lcov', 'html'],
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '/.next/',
-    '/dist/',
-    '/coverage/',
-    '/generated/'
-  ],
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1',
-    '^@ai-sales-agent/(.*)$': '<rootDir>/packages/$1/src'
-  },
-  testEnvironment: 'node',
-  transform: {
-    '^.+\\.(ts|tsx)$': ['ts-jest', {
-      tsconfig: {
-        jsx: 'react-jsx'
-      }
-    }]
-  },
-  setupFilesAfterEnv: ['<rootDir>/test-setup.js'],
-  clearMocks: true,
-  restoreMocks: true
+  testTimeout: 20000,
+  verbose: true,
 };
