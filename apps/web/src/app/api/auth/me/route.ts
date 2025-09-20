@@ -1,22 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/get-user';
-import prisma from '@/lib/prisma';
+import { verifyAccessToken } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    // Get current user from middleware
-    const currentUser = getCurrentUser();
-
-    if (!currentUser) {
+    const token = req.cookies.get('accessToken')?.value;
+    
+    if (!token) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Not authenticated' },
         { status: 401 }
       );
     }
-
-    // Get full user data from database
+    
+    const userPayload = await verifyAccessToken(token);
+    
+    if (!userPayload) {
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
+    
+    // Get fresh user data from database
     const user = await prisma.user.findUnique({
-      where: { id: currentUser.id },
+      where: { id: userPayload.id },
       select: {
         id: true,
         email: true,
@@ -25,38 +33,32 @@ export async function GET(request: NextRequest) {
         companyName: true,
         role: true,
         plan: true,
-        language: true,
         dataRegion: true,
+        language: true,
         timezone: true,
-        isEmailVerified: true,
-        lastLoginAt: true,
+        emailVerified: true,
         createdAt: true,
-        _count: {
-          select: {
-            icps: true,
-            prospects: true,
-            sequences: true,
-            campaigns: true,
-          },
-        },
-      },
+        lastLoginAt: true,
+      }
     });
-
+    
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
       );
     }
-
+    
     return NextResponse.json({
       success: true,
-      user,
+      user
     });
+    
   } catch (error) {
-    console.error('Get current user error:', error);
+    console.error('Me endpoint error:', error);
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to get user info' },
       { status: 500 }
     );
   }
