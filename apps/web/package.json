@@ -16,6 +16,7 @@
     "@ai-sales-agent/core": "*",
     "@prisma/client": "^5.7.1",
     "@stripe/stripe-js": "^2.4.0",
+    "@sendgrid/mail": "^8.1.0",
     "@tanstack/react-query": "^5.17.0",
     "@heroicons/react": "^2.0.18",
     "@headlessui/react": "^1.7.17",
@@ -35,7 +36,11 @@
     "stripe": "^14.11.0",
     "jsonwebtoken": "^9.0.2",
     "bcryptjs": "^2.4.3",
-    "prisma": "^5.7.1"
+    "jose": "^5.2.0",
+    "lru-cache": "^10.1.0",
+    "winston": "^3.11.0",
+    "prisma": "^5.7.1",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "typescript": "^5",
