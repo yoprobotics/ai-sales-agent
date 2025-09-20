@@ -1,261 +1,210 @@
 #!/usr/bin/env node
 
 /**
- * Stripe Setup Script
- * 
- * This script initializes your Stripe account with the necessary products and prices
- * for the AI Sales Agent subscription plans.
- * 
- * Usage: node scripts/stripe-setup.js
+ * Script de configuration Stripe
+ * Configure les produits et prix pour les plans d'abonnement
  */
 
-import Stripe from 'stripe';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
+const Stripe = require('stripe');
+const dotenv = require('dotenv');
+const path = require('path');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Load environment variables
-dotenv.config({ path: path.resolve(__dirname, '../apps/web/.env.local') });
+// Charger les variables d'environnement
+dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
 
 if (!process.env.STRIPE_SECRET_KEY) {
-  console.error('❌ STRIPE_SECRET_KEY not found in environment variables');
+  console.error('❌ STRIPE_SECRET_KEY is not set in .env.local');
   process.exit(1);
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2023-10-16',
-  typescript: true,
 });
 
-// Product and price configurations
-const PRODUCTS = [
+const PLANS = [
   {
-    name: 'AI Sales Agent Starter',
-    description: 'Perfect for small teams getting started with AI prospecting',
-    metadata: {
-      plan: 'STARTER',
-      features: JSON.stringify({
-        icps: 1,
-        prospects: 200,
-        sequences: 1,
-        messages: 1000,
-      }),
+    name: 'Starter',
+    id: 'starter',
+    price: {
+      monthly: 4900, // $49 in cents
+      yearly: 49000, // $490 in cents
     },
-    prices: [
-      {
-        nickname: 'Starter Monthly',
-        unit_amount: 4900, // $49.00
-        recurring: { interval: 'month' as const },
-        metadata: { interval: 'monthly' },
-      },
-      {
-        nickname: 'Starter Yearly',
-        unit_amount: 49000, // $490.00
-        recurring: { interval: 'year' as const },
-        metadata: { interval: 'yearly' },
-      },
+    features: [
+      '1 ICP',
+      '200 prospects per month',
+      '1 email sequence',
+      'Basic AI qualification',
+      'Email support',
     ],
   },
   {
-    name: 'AI Sales Agent Pro',
-    description: 'Advanced features for growing sales teams',
-    metadata: {
-      plan: 'PRO',
-      features: JSON.stringify({
-        icps: 5,
-        prospects: 2000,
-        sequences: 10,
-        messages: 10000,
-      }),
+    name: 'Pro',
+    id: 'pro',
+    price: {
+      monthly: 14900, // $149 in cents
+      yearly: 149000, // $1490 in cents
     },
-    prices: [
-      {
-        nickname: 'Pro Monthly',
-        unit_amount: 14900, // $149.00
-        recurring: { interval: 'month' as const },
-        metadata: { interval: 'monthly' },
-      },
-      {
-        nickname: 'Pro Yearly',
-        unit_amount: 149000, // $1,490.00
-        recurring: { interval: 'year' as const },
-        metadata: { interval: 'yearly' },
-      },
+    features: [
+      '5 ICPs',
+      '2000 prospects per month',
+      '10 email sequences',
+      'Advanced AI features',
+      'Multi-channel outreach',
+      'API access',
+      'Priority support',
     ],
   },
   {
-    name: 'AI Sales Agent Business',
-    description: 'Enterprise features with unlimited usage',
-    metadata: {
-      plan: 'BUSINESS',
-      features: JSON.stringify({
-        icps: -1, // unlimited
-        prospects: -1,
-        sequences: -1,
-        messages: -1,
-      }),
+    name: 'Business',
+    id: 'business',
+    price: {
+      monthly: 49900, // $499 in cents
+      yearly: 499000, // $4990 in cents
     },
-    prices: [
-      {
-        nickname: 'Business Monthly',
-        unit_amount: 49900, // $499.00
-        recurring: { interval: 'month' as const },
-        metadata: { interval: 'monthly' },
-      },
-      {
-        nickname: 'Business Yearly',
-        unit_amount: 499000, // $4,990.00
-        recurring: { interval: 'year' as const },
-        metadata: { interval: 'yearly' },
-      },
+    features: [
+      'Unlimited ICPs',
+      'Unlimited prospects',
+      'Unlimited sequences',
+      'Enterprise AI features',
+      'CRM integrations',
+      'Custom branding',
+      'Dedicated support',
+      'Team collaboration',
     ],
   },
 ];
 
 async function setupStripe() {
-  console.log('🚀 Starting Stripe setup...\n');
+  console.log('🚀 Setting up Stripe products and prices...\n');
 
-  const createdPrices: Record<string, string> = {};
+  const products = {};
+  const prices = {};
 
   try {
-    // Create products and prices
-    for (const productConfig of PRODUCTS) {
-      console.log(`📦 Creating product: ${productConfig.name}`);
+    // Create or update products
+    for (const plan of PLANS) {
+      console.log(`📦 Creating/updating product: ${plan.name}`);
       
-      // Check if product already exists
+      // Check if product exists
+      let product;
       const existingProducts = await stripe.products.search({
-        query: `name:'${productConfig.name}'`,
+        query: `metadata['plan_id']:'${plan.id}'`,
+        limit: 1,
       });
 
-      let product: Stripe.Product;
-      
       if (existingProducts.data.length > 0) {
         product = existingProducts.data[0];
-        console.log(`   ✅ Product already exists: ${product.id}`);
+        console.log(`  ✓ Found existing product: ${product.id}`);
       } else {
-        // Create product
         product = await stripe.products.create({
-          name: productConfig.name,
-          description: productConfig.description,
-          metadata: productConfig.metadata,
+          name: `AI Sales Agent - ${plan.name}`,
+          description: plan.features.join(', '),
+          metadata: {
+            plan_id: plan.id,
+          },
         });
-        console.log(`   ✅ Product created: ${product.id}`);
+        console.log(`  ✓ Created new product: ${product.id}`);
       }
 
-      // Create prices for the product
-      for (const priceConfig of productConfig.prices) {
-        console.log(`   💰 Creating price: ${priceConfig.nickname}`);
-        
-        try {
-          const price = await stripe.prices.create({
-            product: product.id,
-            nickname: priceConfig.nickname,
-            currency: 'usd',
-            unit_amount: priceConfig.unit_amount,
-            recurring: priceConfig.recurring,
-            metadata: priceConfig.metadata,
-          });
-          
-          const planKey = `${productConfig.metadata.plan}_${priceConfig.metadata.interval}`.toUpperCase();
-          createdPrices[planKey] = price.id;
-          console.log(`      ✅ Price created: ${price.id}`);
-        } catch (error: any) {
-          console.log(`      ⚠️  Price might already exist: ${error.message}`);
-        }
-      }
+      products[plan.id] = product;
+
+      // Create prices
+      console.log(`💰 Creating prices for ${plan.name}:`);
       
-      console.log('');
+      // Monthly price
+      const monthlyPrice = await stripe.prices.create({
+        product: product.id,
+        unit_amount: plan.price.monthly,
+        currency: 'usd',
+        recurring: {
+          interval: 'month',
+        },
+        metadata: {
+          plan_id: plan.id,
+          billing_period: 'monthly',
+        },
+      });
+      console.log(`  ✓ Monthly price: ${monthlyPrice.id} ($${plan.price.monthly / 100}/month)`);
+      prices[`${plan.id}_monthly`] = monthlyPrice;
+
+      // Yearly price
+      const yearlyPrice = await stripe.prices.create({
+        product: product.id,
+        unit_amount: plan.price.yearly,
+        currency: 'usd',
+        recurring: {
+          interval: 'year',
+        },
+        metadata: {
+          plan_id: plan.id,
+          billing_period: 'yearly',
+        },
+      });
+      console.log(`  ✓ Yearly price: ${yearlyPrice.id} ($${plan.price.yearly / 100}/year)`);
+      prices[`${plan.id}_yearly`] = yearlyPrice;
+      
+      console.log();
     }
 
-    // Configure Customer Portal
-    console.log('⚙️  Configuring Customer Portal...');
+    // Create webhook endpoint if not exists
+    console.log('🔗 Setting up webhook endpoint...');
     
-    try {
-      const portalConfigurations = await stripe.billingPortal.configurations.list({ limit: 1 });
-      
-      if (portalConfigurations.data.length === 0) {
-        // Create new portal configuration
-        await stripe.billingPortal.configurations.create({
-          business_profile: {
-            headline: 'AI Sales Agent - Manage Your Subscription',
-          },
-          features: {
-            customer_update: {
-              enabled: true,
-              allowed_updates: ['email', 'address', 'phone', 'tax_id'],
-            },
-            invoice_history: {
-              enabled: true,
-            },
-            payment_method_update: {
-              enabled: true,
-            },
-            subscription_cancel: {
-              enabled: true,
-              mode: 'at_period_end',
-              cancellation_reason: {
-                enabled: true,
-                options: [
-                  'too_expensive',
-                  'missing_features',
-                  'switched_service',
-                  'unused',
-                  'other',
-                ],
-              },
-            },
-            subscription_pause: {
-              enabled: false,
-            },
-            subscription_update: {
-              enabled: true,
-              default_allowed_updates: ['price', 'quantity', 'promotion_code'],
-              products: [
-                {
-                  product: 'all',
-                  prices: 'all',
-                },
-              ],
-            },
-          },
-        });
-        console.log('   ✅ Customer Portal configured\n');
-      } else {
-        console.log('   ✅ Customer Portal already configured\n');
-      }
-    } catch (error: any) {
-      console.log(`   ⚠️  Could not configure portal: ${error.message}\n`);
+    const webhookUrl = process.env.NODE_ENV === 'production'
+      ? `${process.env.APP_BASE_URL}/api/webhooks/stripe`
+      : 'https://your-ngrok-url.ngrok.io/api/webhooks/stripe'; // Use ngrok for local testing
+    
+    const existingWebhooks = await stripe.webhookEndpoints.list({ limit: 100 });
+    const existingWebhook = existingWebhooks.data.find(w => w.url === webhookUrl);
+    
+    if (!existingWebhook) {
+      const webhook = await stripe.webhookEndpoints.create({
+        url: webhookUrl,
+        enabled_events: [
+          'customer.subscription.created',
+          'customer.subscription.updated',
+          'customer.subscription.deleted',
+          'invoice.payment_succeeded',
+          'invoice.payment_failed',
+          'customer.created',
+          'customer.updated',
+        ],
+      });
+      console.log(`  ✓ Created webhook: ${webhook.id}`);
+      console.log(`  📌 Webhook secret: ${webhook.secret}`);
+      console.log(`  ⚠️  Add this to your .env.local: STRIPE_WEBHOOK_SECRET=${webhook.secret}`);
+    } else {
+      console.log(`  ✓ Webhook already exists: ${existingWebhook.id}`);
     }
 
     // Output environment variables to set
-    console.log('📝 Add these price IDs to your .env.local file:\n');
-    console.log('```');
-    console.log(`STRIPE_PRICE_STARTER_MONTHLY="${createdPrices.STARTER_MONTHLY || 'price_...'}"`);
-    console.log(`STRIPE_PRICE_STARTER_YEARLY="${createdPrices.STARTER_YEARLY || 'price_...'}"`);
-    console.log(`STRIPE_PRICE_PRO_MONTHLY="${createdPrices.PRO_MONTHLY || 'price_...'}"`);
-    console.log(`STRIPE_PRICE_PRO_YEARLY="${createdPrices.PRO_YEARLY || 'price_...'}"`);
-    console.log(`STRIPE_PRICE_BUSINESS_MONTHLY="${createdPrices.BUSINESS_MONTHLY || 'price_...'}"`);
-    console.log(`STRIPE_PRICE_BUSINESS_YEARLY="${createdPrices.BUSINESS_YEARLY || 'price_...'}"`);
-    console.log('```\n');
+    console.log('\n' + '='.repeat(60));
+    console.log('✅ Stripe setup complete!\n');
+    console.log('Add these to your .env.local file:\n');
+    console.log('# Stripe Price IDs');
+    
+    Object.entries(prices).forEach(([key, price]) => {
+      const envKey = `STRIPE_PRICE_ID_${key.toUpperCase()}`;
+      console.log(`${envKey}=${price.id}`);
+    });
 
-    console.log('✅ Stripe setup completed successfully!');
+    console.log('\n# Stripe Product IDs');
+    Object.entries(products).forEach(([key, product]) => {
+      const envKey = `STRIPE_PRODUCT_ID_${key.toUpperCase()}`;
+      console.log(`${envKey}=${product.id}`);
+    });
+
+    console.log('\n' + '='.repeat(60));
+    console.log('\n🎉 Setup complete! Your Stripe products and prices are ready.');
     console.log('\nNext steps:');
-    console.log('1. Copy the price IDs above to your .env.local file');
-    console.log('2. Configure webhook endpoint in Stripe Dashboard');
-    console.log('3. Test the checkout flow with test cards');
-    console.log('\nRefer to docs/STRIPE_SETUP.md for detailed instructions.');
-
-  } catch (error: any) {
-    console.error('❌ Error during setup:', error.message);
+    console.log('1. Copy the environment variables above to your .env.local');
+    console.log('2. If testing locally, set up ngrok and update the webhook URL');
+    console.log('3. Run "npm run stripe:webhook" to listen for webhooks locally');
+    
+  } catch (error) {
+    console.error('❌ Error setting up Stripe:', error.message);
     process.exit(1);
   }
 }
 
-// Run the setup
-setupStripe().catch((error) => {
-  console.error('❌ Unexpected error:', error);
-  process.exit(1);
-});
+// Run setup
+setupStripe();
