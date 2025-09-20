@@ -1,371 +1,454 @@
-import Papa from 'papaparse'
-import { z } from 'zod'
-import { ProspectCreateSchema } from '@ai-sales-agent/core'
+// CSV Parser with intelligent column mapping and validation
+import Papa from 'papaparse';
+import { z } from 'zod';
+import { 
+  ProspectCreateSchema,
+  ProspectCompanySchema,
+  ValidationError,
+  isValidEmail,
+  extractDomainFromEmail,
+  truncate,
+  capitalize
+} from '@ai-sales-agent/core';
 
+// Column mapping types
+export interface ColumnMapping {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  fullName?: string; // Can be split into firstName/lastName
+  jobTitle?: string;
+  companyName: string;
+  companyDomain?: string;
+  industry?: string;
+  companySize?: string;
+  location?: string;
+  linkedinUrl?: string;
+  websiteUrl?: string;
+  phone?: string;
+  notes?: string;
+  [key: string]: string | undefined; // Allow custom fields
+}
+
+// CSV parsing options
 export interface CSVParseOptions {
-  delimiter?: string
-  skipEmptyLines?: boolean
-  header?: boolean
-  dynamicTyping?: boolean
-  preview?: number
-  transform?: (value: string, field: string | number) => any
+  delimiter?: string;
+  encoding?: string;
+  maxRows?: number;
+  skipEmptyRows?: boolean;
+  trimValues?: boolean;
+  validateEmail?: boolean;
+  detectDuplicates?: boolean;
+  icpId: string;
+}
+
+// Parsed result
+export interface ParsedProspect {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  jobTitle?: string;
+  company: {
+    name: string;
+    domain?: string;
+    industry?: string;
+    size?: string;
+    location?: string;
+  };
+  linkedinUrl?: string;
+  websiteUrl?: string;
+  phone?: string;
+  notes?: string;
+  customFields: Record<string, any>;
+  isValid: boolean;
+  errors?: string[];
 }
 
 export interface CSVParseResult {
-  data: any[]
-  errors: Papa.ParseError[]
-  meta: Papa.ParseMeta
-  preview?: any[]
+  success: boolean;
+  prospects: ParsedProspect[];
+  duplicates: string[];
+  invalidRows: Array<{ row: number; errors: string[] }>;
+  stats: {
+    totalRows: number;
+    validRows: number;
+    invalidRows: number;
+    duplicateRows: number;
+  };
+  suggestedMapping?: Partial<ColumnMapping>;
 }
 
-export interface CSVColumn {
-  name: string
-  type: 'string' | 'number' | 'email' | 'url' | 'phone'
-  required: boolean
-  samples: string[]
-}
+// Column detection patterns for intelligent mapping
+const COLUMN_PATTERNS = {
+  email: /email|mail|contact|e-mail/i,
+  firstName: /first[\s_-]?name|prenom|fname|given[\s_-]?name/i,
+  lastName: /last[\s_-]?name|nom|lname|family[\s_-]?name|surname/i,
+  fullName: /full[\s_-]?name|name|nom[\s_-]?complet|contact[\s_-]?name/i,
+  jobTitle: /title|job|position|role|poste|fonction/i,
+  companyName: /company|organisation|organization|entreprise|societe|firm/i,
+  companyDomain: /domain|website|site|url|web/i,
+  industry: /industry|sector|secteur|industrie|vertical/i,
+  companySize: /size|employees|effectif|taille|headcount/i,
+  location: /location|city|country|address|ville|pays|region/i,
+  linkedinUrl: /linkedin|profile/i,
+  phone: /phone|telephone|tel|mobile|cell/i,
+  notes: /notes|comments|description|remarques/i,
+};
 
-export interface CSVMapping {
-  [csvColumn: string]: string // Maps to prospect field path (e.g., 'company.name')
-}
-
-/**
- * Parse CSV file content
- */
-export function parseCSV(
-  csvContent: string,
-  options: CSVParseOptions = {}
-): Promise<CSVParseResult> {
-  return new Promise((resolve) => {
-    const defaultOptions: Papa.ParseConfig = {
-      header: true,
-      skipEmptyLines: true,
-      dynamicTyping: true,
-      delimiter: '',
-      preview: options.preview || 0,
-      transform: options.transform,
-      complete: (results) => {
-        resolve({
-          data: results.data,
-          errors: results.errors,
-          meta: results.meta,
-          preview: options.preview ? results.data.slice(0, options.preview) : undefined,
-        })
-      },
-    }
-
-    Papa.parse(csvContent, { ...defaultOptions, ...options })
-  })
-}
-
-/**
- * Analyze CSV structure and suggest column types
- */
-export function analyzeCSVStructure(data: any[]): CSVColumn[] {
-  if (data.length === 0) return []
-
-  const sampleSize = Math.min(data.length, 10)
-  const samples = data.slice(0, sampleSize)
-  const columns: CSVColumn[] = []
-
-  // Get all unique column names
-  const columnNames = new Set<string>()
-  samples.forEach((row) => {
-    Object.keys(row).forEach((key) => columnNames.add(key))
-  })
-
-  columnNames.forEach((columnName) => {
-    const values = samples
-      .map((row) => row[columnName])
-      .filter((value) => value !== null && value !== undefined && value !== '')
-
-    const column: CSVColumn = {
-      name: columnName,
-      type: detectColumnType(values),
-      required: isColumnRequired(columnName),
-      samples: values.slice(0, 3).map(String),
-    }
-
-    columns.push(column)
-  })
-
-  return columns.sort((a, b) => {
-    // Sort required columns first, then by likelihood of being important
-    if (a.required && !b.required) return -1
-    if (!a.required && b.required) return 1
-    
-    const priority = getColumnPriority(a.name) - getColumnPriority(b.name)
-    return priority !== 0 ? priority : a.name.localeCompare(b.name)
-  })
-}
-
-/**
- * Detect column data type based on sample values
- */
-function detectColumnType(values: any[]): CSVColumn['type'] {
-  if (values.length === 0) return 'string'
-
-  // Check for email
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (values.some((value) => emailRegex.test(String(value)))) {
-    return 'email'
-  }
-
-  // Check for URL
-  const urlRegex = /^https?:\/\/.+/
-  if (values.some((value) => urlRegex.test(String(value)))) {
-    return 'url'
-  }
-
-  // Check for phone
-  const phoneRegex = /^[\+]?[\d\s\-\(\)]{7,}$/
-  if (values.some((value) => phoneRegex.test(String(value)))) {
-    return 'phone'
-  }
-
-  // Check for number
-  if (values.every((value) => !isNaN(Number(value)))) {
-    return 'number'
-  }
-
-  return 'string'
-}
-
-/**
- * Check if column should be required based on name
- */
-function isColumnRequired(columnName: string): boolean {
-  const requiredPatterns = [
-    /email/i,
-    /e.?mail/i,
-    /company/i,
-    /business/i,
-    /organization/i,
-    /firm/i,
-  ]
-
-  return requiredPatterns.some((pattern) => pattern.test(columnName))
-}
-
-/**
- * Get column priority for sorting (lower = higher priority)
- */
-function getColumnPriority(columnName: string): number {
-  const name = columnName.toLowerCase()
-
-  // Highest priority
-  if (name.includes('email')) return 1
-  if (name.includes('company') || name.includes('business')) return 2
+// Smart column detection
+export function detectColumnMapping(headers: string[]): Partial<ColumnMapping> {
+  const mapping: Partial<ColumnMapping> = {};
   
-  // High priority
-  if (name.includes('first') && name.includes('name')) return 3
-  if (name.includes('last') && name.includes('name')) return 4
-  if (name.includes('name')) return 5
-  if (name.includes('title') || name.includes('position')) return 6
-  
-  // Medium priority
-  if (name.includes('phone') || name.includes('tel')) return 7
-  if (name.includes('linkedin')) return 8
-  if (name.includes('website') || name.includes('url')) return 9
-  if (name.includes('industry') || name.includes('sector')) return 10
-  if (name.includes('location') || name.includes('city') || name.includes('country')) return 11
-  
-  // Lower priority
-  return 20
-}
-
-/**
- * Suggest automatic mapping based on column analysis
- */
-export function suggestMapping(columns: CSVColumn[]): CSVMapping {
-  const mapping: CSVMapping = {}
-
-  columns.forEach((column) => {
-    const name = column.name.toLowerCase()
+  headers.forEach((header) => {
+    const normalizedHeader = header.trim().toLowerCase();
     
-    // Email mapping
-    if (column.type === 'email' || name.includes('email') || name.includes('e-mail')) {
-      mapping[column.name] = 'email'
-    }
-    
-    // Name mappings
-    else if (name.includes('first') && name.includes('name')) {
-      mapping[column.name] = 'firstName'
-    }
-    else if (name.includes('last') && name.includes('name')) {
-      mapping[column.name] = 'lastName'
-    }
-    else if (name === 'name' || name === 'full_name' || name === 'fullname') {
-      mapping[column.name] = 'firstName' // Will need to be split
-    }
-    
-    // Company mappings
-    else if (name.includes('company') || name.includes('business') || name.includes('organization')) {
-      mapping[column.name] = 'company.name'
-    }
-    
-    // Job title
-    else if (name.includes('title') || name.includes('position') || name.includes('role')) {
-      mapping[column.name] = 'jobTitle'
-    }
-    
-    // Contact info
-    else if (name.includes('phone') || name.includes('tel') || name.includes('mobile')) {
-      mapping[column.name] = 'phone'
-    }
-    else if (name.includes('linkedin')) {
-      mapping[column.name] = 'linkedinUrl'
-    }
-    else if (name.includes('website') || name.includes('url')) {
-      mapping[column.name] = 'websiteUrl'
-    }
-    
-    // Company details
-    else if (name.includes('industry') || name.includes('sector')) {
-      mapping[column.name] = 'company.industry'
-    }
-    else if (name.includes('size') || name.includes('employees')) {
-      mapping[column.name] = 'company.size'
-    }
-    else if (name.includes('revenue') || name.includes('income')) {
-      mapping[column.name] = 'company.revenue'
-    }
-    else if (name.includes('location') || name.includes('city') || name.includes('country')) {
-      mapping[column.name] = 'company.location'
-    }
-    else if (name.includes('domain')) {
-      mapping[column.name] = 'company.domain'
-    }
-    
-    // Notes and description
-    else if (name.includes('note') || name.includes('description') || name.includes('comment')) {
-      mapping[column.name] = 'notes'
-    }
-  })
-
-  return mapping
-}
-
-/**
- * Transform CSV row to prospect data using mapping
- */
-export function transformRowToProspect(
-  row: any,
-  mapping: CSVMapping,
-  icpId: string
-): Partial<any> {
-  const prospect: any = {
-    icpId,
-    source: 'csv_import',
-    company: {},
-    customFields: {},
-  }
-
-  Object.entries(mapping).forEach(([csvColumn, prospectField]) => {
-    const value = row[csvColumn]
-    if (value === undefined || value === null || value === '') return
-
-    // Handle nested fields (e.g., 'company.name')
-    if (prospectField.includes('.')) {
-      const [parent, child] = prospectField.split('.')
-      if (!prospect[parent]) prospect[parent] = {}
-      prospect[parent][child] = value
-    } else {
-      prospect[prospectField] = value
-    }
-  })
-
-  // Handle special cases
-  if (prospect.firstName && !prospect.lastName && prospect.firstName.includes(' ')) {
-    const nameParts = prospect.firstName.split(' ')
-    prospect.firstName = nameParts[0]
-    prospect.lastName = nameParts.slice(1).join(' ')
-  }
-
-  // Store unmapped fields in customFields
-  Object.keys(row).forEach((csvColumn) => {
-    if (!mapping[csvColumn] && row[csvColumn]) {
-      prospect.customFields[csvColumn] = row[csvColumn]
-    }
-  })
-
-  return prospect
-}
-
-/**
- * Validate transformed prospect data
- */
-export function validateProspectData(
-  prospect: any
-): { valid: boolean; errors: string[] } {
-  try {
-    ProspectCreateSchema.parse(prospect)
-    return { valid: true, errors: [] }
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return {
-        valid: false,
-        errors: error.errors.map((err) => `${err.path.join('.')}: ${err.message}`),
+    for (const [field, pattern] of Object.entries(COLUMN_PATTERNS)) {
+      if (pattern.test(normalizedHeader)) {
+        mapping[field as keyof ColumnMapping] = header;
+        break;
       }
     }
-    return { valid: false, errors: ['Validation failed'] }
+  });
+  
+  return mapping;
+}
+
+// Parse name into firstName and lastName
+function parseFullName(fullName: string): { firstName?: string; lastName?: string } {
+  if (!fullName) return {};
+  
+  const parts = fullName.trim().split(/\s+/);
+  
+  if (parts.length === 1) {
+    return { firstName: parts[0] };
+  }
+  
+  if (parts.length === 2) {
+    return { firstName: parts[0], lastName: parts[1] };
+  }
+  
+  // For 3+ parts, assume first is firstName, rest is lastName
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(' ')
+  };
+}
+
+// Normalize company size
+function normalizeCompanySize(size: string | undefined): string | undefined {
+  if (!size) return undefined;
+  
+  const normalized = size.toLowerCase().trim();
+  
+  if (normalized.includes('startup') || /1-10|<10/.test(normalized)) {
+    return 'startup';
+  }
+  if (/11-50|10-50|small/.test(normalized)) {
+    return 'small';
+  }
+  if (/51-200|50-200|medium|mid/.test(normalized)) {
+    return 'medium';
+  }
+  if (/201-1000|200-1000|large/.test(normalized)) {
+    return 'large';
+  }
+  if (/1000\+|>1000|enterprise/.test(normalized)) {
+    return 'enterprise';
+  }
+  
+  // Try to parse as number
+  const num = parseInt(normalized.replace(/[^\d]/g, ''));
+  if (!isNaN(num)) {
+    if (num <= 10) return 'startup';
+    if (num <= 50) return 'small';
+    if (num <= 200) return 'medium';
+    if (num <= 1000) return 'large';
+    return 'enterprise';
+  }
+  
+  return undefined;
+}
+
+// Clean and validate URL
+function cleanUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  
+  let cleaned = url.trim();
+  
+  // Add https:// if missing
+  if (!/^https?:\/\//i.test(cleaned)) {
+    cleaned = 'https://' + cleaned;
+  }
+  
+  // Validate URL
+  try {
+    new URL(cleaned);
+    return cleaned;
+  } catch {
+    return undefined;
   }
 }
 
-/**
- * Process entire CSV with mapping and validation
- */
-export async function processCSV(
-  csvContent: string,
-  mapping: CSVMapping,
-  icpId: string,
-  options: CSVParseOptions = {}
-): Promise<{
-  valid: any[]
-  invalid: Array<{ row: any; errors: string[]; index: number }>
-  summary: {
-    total: number
-    valid: number
-    invalid: number
-    duplicates: number
+// Clean phone number
+function cleanPhoneNumber(phone: string | undefined): string | undefined {
+  if (!phone) return undefined;
+  
+  // Remove all non-digit characters except + at the beginning
+  const cleaned = phone.replace(/[^\d+]/g, '').replace(/\+(?!\d)/g, '');
+  
+  // Basic validation: should have at least 7 digits
+  if (cleaned.replace(/\D/g, '').length >= 7) {
+    return cleaned;
   }
-}> {
-  const parseResult = await parseCSV(csvContent, options)
-  const valid: any[] = []
-  const invalid: Array<{ row: any; errors: string[]; index: number }> = []
-  const seenEmails = new Set<string>()
-  let duplicates = 0
+  
+  return undefined;
+}
 
-  parseResult.data.forEach((row, index) => {
-    const prospect = transformRowToProspect(row, mapping, icpId)
-    const validation = validateProspectData(prospect)
-
-    if (!validation.valid) {
-      invalid.push({ row, errors: validation.errors, index })
-      return
+// Parse a single row
+function parseRow(
+  row: any,
+  mapping: ColumnMapping,
+  options: CSVParseOptions
+): ParsedProspect {
+  const errors: string[] = [];
+  const customFields: Record<string, any> = {};
+  
+  // Extract email (required)
+  const email = row[mapping.email]?.toString().trim().toLowerCase();
+  if (!email) {
+    errors.push('Email is required');
+  } else if (options.validateEmail && !isValidEmail(email)) {
+    errors.push('Invalid email format');
+  }
+  
+  // Extract name
+  let firstName: string | undefined;
+  let lastName: string | undefined;
+  
+  if (mapping.fullName && row[mapping.fullName]) {
+    const parsed = parseFullName(row[mapping.fullName]);
+    firstName = parsed.firstName;
+    lastName = parsed.lastName;
+  } else {
+    firstName = row[mapping.firstName]?.toString().trim();
+    lastName = row[mapping.lastName]?.toString().trim();
+  }
+  
+  // Capitalize names
+  if (firstName) firstName = capitalize(firstName);
+  if (lastName) lastName = capitalize(lastName);
+  
+  // Extract company (required)
+  const companyName = row[mapping.companyName]?.toString().trim();
+  if (!companyName) {
+    errors.push('Company name is required');
+  }
+  
+  // Extract company domain (or derive from email)
+  let companyDomain = row[mapping.companyDomain]?.toString().trim();
+  if (!companyDomain && email && isValidEmail(email)) {
+    const emailDomain = extractDomainFromEmail(email);
+    // Only use email domain if it's not a common provider
+    const commonProviders = ['gmail.', 'yahoo.', 'outlook.', 'hotmail.', 'icloud.'];
+    if (!commonProviders.some(p => emailDomain.includes(p))) {
+      companyDomain = emailDomain;
     }
-
-    // Check for duplicate emails
-    if (prospect.email && seenEmails.has(prospect.email.toLowerCase())) {
-      duplicates++
-      return
+  }
+  companyDomain = cleanUrl(companyDomain);
+  
+  // Extract other fields
+  const jobTitle = row[mapping.jobTitle]?.toString().trim();
+  const industry = row[mapping.industry]?.toString().trim();
+  const companySize = normalizeCompanySize(row[mapping.companySize]);
+  const location = row[mapping.location]?.toString().trim();
+  const linkedinUrl = cleanUrl(row[mapping.linkedinUrl]);
+  const websiteUrl = cleanUrl(row[mapping.websiteUrl || mapping.companyDomain]);
+  const phone = cleanPhoneNumber(row[mapping.phone]);
+  const notes = row[mapping.notes]?.toString().trim();
+  
+  // Collect custom fields (fields not in the standard mapping)
+  Object.keys(row).forEach(key => {
+    if (!Object.values(mapping).includes(key)) {
+      const value = row[key];
+      if (value !== null && value !== undefined && value !== '') {
+        customFields[key] = value;
+      }
     }
-
-    if (prospect.email) {
-      seenEmails.add(prospect.email.toLowerCase())
-    }
-
-    valid.push(prospect)
-  })
-
+  });
+  
   return {
-    valid,
-    invalid,
-    summary: {
-      total: parseResult.data.length,
-      valid: valid.length,
-      invalid: invalid.length,
-      duplicates,
+    email: email || '',
+    firstName,
+    lastName,
+    jobTitle,
+    company: {
+      name: companyName || '',
+      domain: companyDomain,
+      industry,
+      size: companySize,
+      location
     },
-  }
+    linkedinUrl,
+    websiteUrl,
+    phone,
+    notes: notes ? truncate(notes, 2000) : undefined,
+    customFields,
+    isValid: errors.length === 0,
+    errors: errors.length > 0 ? errors : undefined
+  };
+}
+
+// Main CSV parsing function
+export async function parseCSV(
+  fileContent: string | File,
+  mapping: ColumnMapping,
+  options: CSVParseOptions = { icpId: '' }
+): Promise<CSVParseResult> {
+  return new Promise((resolve, reject) => {
+    const config: Papa.ParseConfig = {
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: options.skipEmptyRows !== false,
+      delimitersToGuess: [',', '\t', ';', '|', '^'],
+      complete: (results) => {
+        if (results.errors.length > 0) {
+          // Handle Papa parse errors
+          const error = results.errors[0];
+          reject(new ValidationError(`CSV parsing error: ${error.message}`));
+          return;
+        }
+        
+        const data = results.data as any[];
+        const prospects: ParsedProspect[] = [];
+        const duplicates: string[] = [];
+        const invalidRows: Array<{ row: number; errors: string[] }> = [];
+        const seenEmails = new Set<string>();
+        
+        // Process each row
+        data.forEach((row, index) => {
+          // Skip if max rows reached
+          if (options.maxRows && prospects.length >= options.maxRows) {
+            return;
+          }
+          
+          // Trim values if requested
+          if (options.trimValues !== false) {
+            Object.keys(row).forEach(key => {
+              if (typeof row[key] === 'string') {
+                row[key] = row[key].trim();
+              }
+            });
+          }
+          
+          // Parse the row
+          const parsed = parseRow(row, mapping, options);
+          
+          // Check for duplicates
+          if (options.detectDuplicates !== false && parsed.email) {
+            if (seenEmails.has(parsed.email)) {
+              duplicates.push(parsed.email);
+              return;
+            }
+            seenEmails.add(parsed.email);
+          }
+          
+          // Add to results
+          if (parsed.isValid) {
+            prospects.push(parsed);
+          } else {
+            invalidRows.push({
+              row: index + 2, // +2 for header and 0-index
+              errors: parsed.errors || []
+            });
+          }
+        });
+        
+        resolve({
+          success: true,
+          prospects,
+          duplicates,
+          invalidRows,
+          stats: {
+            totalRows: data.length,
+            validRows: prospects.length,
+            invalidRows: invalidRows.length,
+            duplicateRows: duplicates.length
+          }
+        });
+      },
+      error: (error) => {
+        reject(new ValidationError(`CSV parsing failed: ${error.message}`));
+      }
+    };
+    
+    if (typeof fileContent === 'string') {
+      Papa.parse(fileContent, config);
+    } else {
+      Papa.parse(fileContent, config);
+    }
+  });
+}
+
+// Helper to suggest column mapping from headers
+export async function suggestColumnMapping(
+  fileContent: string | File
+): Promise<Partial<ColumnMapping>> {
+  return new Promise((resolve, reject) => {
+    Papa.parse(fileContent, {
+      header: true,
+      preview: 1, // Only need headers
+      complete: (results) => {
+        if (results.errors.length > 0) {
+          reject(new ValidationError('Failed to read CSV headers'));
+          return;
+        }
+        
+        const headers = results.meta.fields || [];
+        const mapping = detectColumnMapping(headers);
+        resolve(mapping);
+      },
+      error: (error) => {
+        reject(new ValidationError(`Failed to read CSV: ${error.message}`));
+      }
+    });
+  });
+}
+
+// Validate parsed prospects against schema
+export function validateProspects(
+  prospects: ParsedProspect[],
+  icpId: string
+): Array<z.infer<typeof ProspectCreateSchema>> {
+  const validated: Array<z.infer<typeof ProspectCreateSchema>> = [];
+  
+  prospects.forEach(prospect => {
+    try {
+      const validatedProspect = ProspectCreateSchema.parse({
+        email: prospect.email,
+        firstName: prospect.firstName,
+        lastName: prospect.lastName,
+        jobTitle: prospect.jobTitle,
+        company: {
+          name: prospect.company.name,
+          domain: prospect.company.domain,
+          industry: prospect.company.industry,
+          size: prospect.company.size,
+          location: prospect.company.location
+        },
+        linkedinUrl: prospect.linkedinUrl,
+        websiteUrl: prospect.websiteUrl,
+        phone: prospect.phone,
+        notes: prospect.notes,
+        icpId,
+        source: 'csv_import',
+        customFields: prospect.customFields
+      });
+      
+      validated.push(validatedProspect);
+    } catch (error) {
+      // Skip invalid prospects (already reported in parseRow)
+    }
+  });
+  
+  return validated;
 }
