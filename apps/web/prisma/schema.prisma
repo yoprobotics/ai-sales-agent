@@ -1,0 +1,451 @@
+// Prisma Schema for AI Sales Agent
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Roles Enum
+enum UserRole {
+  CLIENT
+  ADMIN
+  TEAM_MEMBER
+  TEAM_OWNER
+}
+
+// Subscription Plans Enum
+enum SubscriptionPlan {
+  STARTER
+  PRO
+  BUSINESS
+}
+
+// Subscription Status Enum
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  INCOMPLETE
+}
+
+// Payment Status Enum
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+// Main User Model
+model User {
+  id                String            @id @default(uuid())
+  email             String            @unique
+  emailVerified     Boolean           @default(false)
+  hashedPassword    String
+  firstName         String
+  lastName          String
+  role              UserRole          @default(CLIENT)
+  plan              SubscriptionPlan  @default(STARTER)
+  companyName       String?
+  language          String            @default("en")
+  dataRegion        String            @default("US")
+  timezone          String            @default("UTC")
+  avatarUrl         String?
+  
+  // Relationships
+  subscription      Subscription?
+  prospects         Prospect[]
+  icps              ICP[]
+  sequences         EmailSequence[]
+  campaigns         Campaign[]
+  activities        Activity[]
+  insights          AIInsight[]
+  loginSessions     LoginSession[]
+  
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  lastLoginAt       DateTime?
+  
+  @@index([email])
+  @@index([plan])
+}
+
+// Subscription Model
+model Subscription {
+  id                   String             @id @default(uuid())
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Stripe fields
+  stripeCustomerId     String             @unique
+  stripeSubscriptionId String?            @unique
+  stripePriceId        String?
+  
+  // Subscription details
+  plan                 SubscriptionPlan   @default(STARTER)
+  status               SubscriptionStatus @default(INCOMPLETE)
+  trialEndsAt          DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  canceledAt           DateTime?
+  
+  // Billing period
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  
+  // Usage tracking
+  usage                SubscriptionUsage?
+  payments             Payment[]
+  
+  // Timestamps
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+  @@index([status])
+}
+
+// Subscription Usage Model
+model SubscriptionUsage {
+  id                String        @id @default(uuid())
+  subscriptionId    String        @unique
+  subscription      Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  
+  // Current usage
+  prospectsCount    Int           @default(0)
+  icpsCount         Int           @default(0)
+  sequencesCount    Int           @default(0)
+  messagesCount     Int           @default(0)
+  
+  // Usage limits based on plan
+  prospectsLimit    Int           @default(200)
+  icpsLimit         Int           @default(1)
+  sequencesLimit    Int           @default(1)
+  messagesLimit     Int           @default(1000)
+  
+  // Period tracking
+  periodStart       DateTime      @default(now())
+  periodEnd         DateTime
+  
+  // Timestamps
+  updatedAt         DateTime      @updatedAt
+}
+
+// Payment Model
+model Payment {
+  id                  String          @id @default(uuid())
+  subscriptionId      String
+  subscription        Subscription    @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  
+  // Stripe fields
+  stripePaymentId     String          @unique
+  stripeInvoiceId     String          @unique
+  
+  // Payment details
+  amount              Int             // in cents
+  currency            String          @default("usd")
+  status              PaymentStatus
+  failureReason       String?
+  
+  // Billing period
+  billingPeriodStart  DateTime
+  billingPeriodEnd    DateTime
+  
+  // Timestamps
+  createdAt           DateTime        @default(now())
+  paidAt              DateTime?
+  refundedAt          DateTime?
+  
+  @@index([stripePaymentId])
+  @@index([stripeInvoiceId])
+  @@index([status])
+}
+
+// ICP (Ideal Customer Profile) Model
+model ICP {
+  id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  
+  // Criteria
+  industry    String[]
+  companySize String[]
+  revenue     String?
+  location    String[]
+  keywords    String[]
+  exclusions  String[]        @default([])
+  jobTitles   String[]        @default([])
+  technologies String[]       @default([])
+  
+  isActive    Boolean         @default(true)
+  
+  // Relationships
+  prospects   Prospect[]
+  sequences   EmailSequence[]
+  
+  // Timestamps
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  @@index([userId])
+  @@index([isActive])
+}
+
+// Prospect Model
+model Prospect {
+  id              String          @id @default(uuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  icpId           String
+  icp             ICP             @relation(fields: [icpId], references: [id], onDelete: Cascade)
+  
+  // Contact info
+  email           String
+  firstName       String?
+  lastName        String?
+  jobTitle        String?
+  phone           String?
+  linkedinUrl     String?
+  websiteUrl      String?
+  
+  // Company info
+  companyName     String
+  companyDomain   String?
+  companySize     String?
+  industry        String?
+  revenue         String?
+  location        String?
+  
+  // Qualification
+  score           Int             @default(0)
+  scoreBreakdown  Json?           // BANT breakdown
+  scoreExplanation String?
+  confidence      Float           @default(0)
+  
+  // Status
+  stage           String          @default("new") // new, contacted, meeting, negotiation, won, lost
+  source          String          @default("manual") // csv_import, url_scraping, manual, api
+  
+  // Engagement
+  lastContactedAt DateTime?
+  nextFollowUpAt  DateTime?
+  isOptedOut      Boolean         @default(false)
+  
+  // Custom fields
+  customFields    Json?
+  notes           String?
+  
+  // Relationships
+  messages        Message[]
+  activities      Activity[]
+  
+  // Timestamps
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  @@unique([userId, email])
+  @@index([userId])
+  @@index([icpId])
+  @@index([score])
+  @@index([stage])
+}
+
+// Email Sequence Model
+model EmailSequence {
+  id          String              @id @default(uuid())
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  icpId       String
+  icp         ICP                 @relation(fields: [icpId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  
+  isActive    Boolean             @default(true)
+  
+  // Relationships
+  steps       EmailSequenceStep[]
+  campaigns   Campaign[]
+  
+  // Stats
+  stats       Json?               // Sequence performance stats
+  
+  // Timestamps
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  
+  @@index([userId])
+  @@index([icpId])
+  @@index([isActive])
+}
+
+// Email Sequence Step Model
+model EmailSequenceStep {
+  id          String          @id @default(uuid())
+  sequenceId  String
+  sequence    EmailSequence   @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  
+  stepNumber  Int
+  subject     String
+  content     String          @db.Text
+  delayDays   Int             @default(0)
+  
+  conditions  Json?           // Conditional logic
+  isActive    Boolean         @default(true)
+  
+  // Timestamps
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  @@unique([sequenceId, stepNumber])
+  @@index([sequenceId])
+}
+
+// Campaign Model
+model Campaign {
+  id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sequenceId  String
+  sequence    EmailSequence   @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  
+  status      String          @default("draft") // draft, active, paused, completed, archived
+  
+  // Relationships
+  messages    Message[]
+  
+  // Stats
+  stats       Json?           // Campaign performance stats
+  
+  // Timestamps
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  @@index([userId])
+  @@index([sequenceId])
+  @@index([status])
+}
+
+// Message Model
+model Message {
+  id              String      @id @default(uuid())
+  prospectId      String
+  prospect        Prospect    @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  campaignId      String?
+  campaign        Campaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  
+  type            String      @default("manual") // initial, follow_up, manual, template
+  channel         String      @default("email") // email, linkedin, sms, whatsapp
+  
+  subject         String?
+  content         String      @db.Text
+  
+  status          String      @default("draft") // draft, scheduled, sent, delivered, opened, clicked, replied, bounced, failed
+  
+  // Tracking
+  sentAt          DateTime?
+  deliveredAt     DateTime?
+  openedAt        DateTime?
+  clickedAt       DateTime?
+  repliedAt       DateTime?
+  
+  // Metadata
+  metadata        Json?
+  
+  // Timestamps
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@index([prospectId])
+  @@index([campaignId])
+  @@index([status])
+}
+
+// Activity Model
+model Activity {
+  id              String      @id @default(uuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prospectId      String
+  prospect        Prospect    @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  
+  type            String      // call, meeting, email, note, task, demo, follow_up
+  title           String
+  description     String?
+  
+  scheduledAt     DateTime?
+  completedAt     DateTime?
+  
+  reminder        Json?       // Reminder settings
+  metadata        Json?
+  
+  // Timestamps
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@index([userId])
+  @@index([prospectId])
+  @@index([type])
+}
+
+// AI Insight Model
+model AIInsight {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type        String      // performance, recommendation, alert, trend, prediction
+  title       String
+  description String      @db.Text
+  priority    String      @default("medium") // low, medium, high, urgent
+  
+  actionable  Boolean     @default(true)
+  metadata    Json?
+  isRead      Boolean     @default(false)
+  
+  // Timestamps
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  @@index([userId])
+  @@index([type])
+  @@index([priority])
+  @@index([isRead])
+}
+
+// Login Session Model (for security tracking)
+model LoginSession {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  token       String      @unique
+  refreshToken String?    @unique
+  
+  ipAddress   String?
+  userAgent   String?
+  
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  
+  // Timestamps
+  createdAt   DateTime    @default(now())
+  
+  @@index([userId])
+  @@index([token])
+  @@index([refreshToken])
+}
