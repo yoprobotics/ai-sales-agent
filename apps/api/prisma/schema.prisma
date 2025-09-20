@@ -1,0 +1,615 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// User & Authentication
+// ============================================
+
+model User {
+  id                String            @id @default(uuid())
+  email             String            @unique
+  passwordHash      String
+  firstName         String
+  lastName          String
+  role              UserRole          @default(CLIENT)
+  plan              SubscriptionPlan  @default(STARTER)
+  companyName       String?
+  dataRegion        DataRegion        @default(EU)
+  isEmailVerified   Boolean           @default(false)
+  emailVerifiedAt   DateTime?
+  language          Language          @default(en)
+  timezone          String            @default("UTC")
+  lastLoginAt       DateTime?
+  failedLoginCount  Int               @default(0)
+  lockedUntil       DateTime?
+  refreshToken      String?
+  
+  // Soft delete & audit
+  deletedAt         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relations
+  organisation      Organisation?     @relation(fields: [organisationId], references: [id])
+  organisationId    String?
+  icps              ICP[]
+  prospects         Prospect[]
+  sequences         EmailSequence[]
+  campaigns         Campaign[]
+  messages          Message[]
+  activities        Activity[]
+  insights          AIInsight[]
+  reports           Report[]
+  subscription      Subscription?
+  auditLogs         AuditLog[]
+  sessions          Session[]
+  
+  @@index([email])
+  @@index([organisationId])
+  @@index([deletedAt])
+}
+
+model Session {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token         String    @unique
+  ipAddress     String?
+  userAgent     String?
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([token])
+}
+
+model Organisation {
+  id                String            @id @default(uuid())
+  name              String
+  domain            String?           @unique
+  industry          String?
+  size              CompanySize?
+  billingEmail      String
+  dataRegion        DataRegion        @default(EU)
+  
+  // Soft delete & audit
+  deletedAt         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relations
+  users             User[]
+  subscription      Subscription?
+  
+  @@index([domain])
+  @@index([deletedAt])
+}
+
+// ============================================
+// ICP & Prospects
+// ============================================
+
+model ICP {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  description       String?
+  isActive          Boolean           @default(true)
+  
+  // Criteria as JSON (for flexibility)
+  criteria          Json
+  
+  // Soft delete & audit
+  deletedAt         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relations
+  prospects         Prospect[]
+  sequences         EmailSequence[]
+  
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([isActive])
+  @@index([deletedAt])
+}
+
+model Prospect {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  icpId             String
+  icp               ICP               @relation(fields: [icpId], references: [id], onDelete: Cascade)
+  
+  // Contact information
+  email             String
+  firstName         String?
+  lastName          String?
+  jobTitle          String?
+  phone             String?
+  linkedinUrl       String?
+  websiteUrl        String?
+  notes             String?           @db.Text
+  
+  // Company information (embedded)
+  companyName       String
+  companyDomain     String?
+  companyIndustry   String?
+  companySize       CompanySize?
+  companyRevenue    RevenueRange?
+  companyLocation   String?
+  companyDescription String?          @db.Text
+  
+  // Qualification
+  score             Int               @default(0)
+  scoreExplanation  Json?
+  stage             ProspectStage     @default(new)
+  source            ProspectSource    @default(manual)
+  
+  // Contact tracking
+  lastContactedAt   DateTime?
+  nextFollowUpAt    DateTime?
+  isOptedOut        Boolean           @default(false)
+  optedOutAt        DateTime?
+  
+  // Custom fields
+  customFields      Json?
+  
+  // Soft delete & audit
+  deletedAt         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relations
+  messages          Message[]
+  activities        Activity[]
+  campaignProspects CampaignProspect[]
+  
+  @@unique([userId, email])
+  @@index([userId])
+  @@index([icpId])
+  @@index([email])
+  @@index([stage])
+  @@index([score])
+  @@index([deletedAt])
+  @@index([companyDomain])
+}
+
+// ============================================
+// Email Sequences & Campaigns
+// ============================================
+
+model EmailSequence {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  icpId             String
+  icp               ICP               @relation(fields: [icpId], references: [id], onDelete: Cascade)
+  
+  name              String
+  description       String?
+  isActive          Boolean           @default(true)
+  
+  // Stats
+  stats             Json?
+  
+  // Soft delete & audit
+  deletedAt         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relations
+  steps             EmailSequenceStep[]
+  campaigns         Campaign[]
+  
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([icpId])
+  @@index([isActive])
+  @@index([deletedAt])
+}
+
+model EmailSequenceStep {
+  id                String            @id @default(uuid())
+  sequenceId        String
+  sequence          EmailSequence     @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  
+  stepNumber        Int
+  subject           String
+  content           String            @db.Text
+  delayDays         Int               @default(0)
+  conditions        Json?
+  isActive          Boolean           @default(true)
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relations
+  messages          Message[]
+  
+  @@unique([sequenceId, stepNumber])
+  @@index([sequenceId])
+  @@index([isActive])
+}
+
+model Campaign {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sequenceId        String
+  sequence          EmailSequence     @relation(fields: [sequenceId], references: [id])
+  
+  name              String
+  description       String?
+  status            CampaignStatus    @default(draft)
+  
+  startedAt         DateTime?
+  pausedAt          DateTime?
+  completedAt       DateTime?
+  
+  // Stats
+  stats             Json?
+  
+  // Soft delete & audit
+  deletedAt         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relations
+  prospects         CampaignProspect[]
+  messages          Message[]
+  
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([sequenceId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model CampaignProspect {
+  id                String            @id @default(uuid())
+  campaignId        String
+  campaign          Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  prospectId        String
+  prospect          Prospect          @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  
+  status            String            @default("active")
+  addedAt           DateTime          @default(now())
+  
+  @@unique([campaignId, prospectId])
+  @@index([campaignId])
+  @@index([prospectId])
+}
+
+// ============================================
+// Messages & Activities
+// ============================================
+
+model Message {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prospectId        String
+  prospect          Prospect          @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  campaignId        String?
+  campaign          Campaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  sequenceStepId    String?
+  sequenceStep      EmailSequenceStep? @relation(fields: [sequenceStepId], references: [id], onDelete: SetNull)
+  
+  type              MessageType       @default(manual)
+  channel           MessageChannel    @default(email)
+  subject           String?
+  content           String            @db.Text
+  status            MessageStatus     @default(draft)
+  
+  // Tracking
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  openedAt          DateTime?
+  clickedAt         DateTime?
+  repliedAt         DateTime?
+  bouncedAt         DateTime?
+  
+  // Metadata
+  metadata          Json?
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@index([userId])
+  @@index([prospectId])
+  @@index([campaignId])
+  @@index([status])
+  @@index([sentAt])
+}
+
+model Activity {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prospectId        String
+  prospect          Prospect          @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  
+  type              ActivityType
+  title             String
+  description       String?           @db.Text
+  
+  scheduledAt       DateTime?
+  completedAt       DateTime?
+  
+  // Reminder
+  reminder          Json?
+  
+  // Metadata
+  metadata          Json?
+  
+  // Soft delete & audit
+  deletedAt         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@index([userId])
+  @@index([prospectId])
+  @@index([type])
+  @@index([scheduledAt])
+  @@index([completedAt])
+  @@index([deletedAt])
+}
+
+// ============================================
+// AI & Analytics
+// ============================================
+
+model AIInsight {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type              InsightType
+  title             String
+  description       String            @db.Text
+  priority          InsightPriority   @default(normal)
+  actionable        Boolean           @default(true)
+  
+  // Metadata
+  metadata          Json?
+  
+  isRead            Boolean           @default(false)
+  readAt            DateTime?
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@index([userId])
+  @@index([type])
+  @@index([priority])
+  @@index([isRead])
+}
+
+model Report {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type              ReportType
+  name              String
+  data              Json
+  
+  generatedAt       DateTime          @default(now())
+  expiresAt         DateTime?
+  
+  @@index([userId])
+  @@index([type])
+  @@index([generatedAt])
+}
+
+// ============================================
+// Billing & Subscriptions
+// ============================================
+
+model Subscription {
+  id                String            @id @default(uuid())
+  userId            String            @unique
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organisationId    String?           @unique
+  organisation      Organisation?     @relation(fields: [organisationId], references: [id])
+  
+  plan              SubscriptionPlan  @default(STARTER)
+  status            SubscriptionStatus @default(active)
+  
+  stripeCustomerId  String?           @unique
+  stripeSubscriptionId String?        @unique
+  
+  currentPeriodStart DateTime
+  currentPeriodEnd  DateTime
+  cancelAtPeriodEnd Boolean          @default(false)
+  canceledAt        DateTime?
+  
+  // Usage tracking
+  usage             Json?
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@index([status])
+  @@index([plan])
+}
+
+// ============================================
+// Audit & Monitoring
+// ============================================
+
+model AuditLog {
+  id                String            @id @default(uuid())
+  userId            String?
+  user              User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  action            String
+  entityType        String
+  entityId          String?
+  
+  ipAddress         String?
+  userAgent         String?
+  
+  // Changes
+  oldValues         Json?
+  newValues         Json?
+  
+  // Metadata
+  metadata          Json?
+  
+  createdAt         DateTime          @default(now())
+  
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+}
+
+// ============================================
+// Enums
+// ============================================
+
+enum UserRole {
+  CLIENT
+  ADMIN
+  TEAM_MEMBER
+  TEAM_OWNER
+}
+
+enum Language {
+  en
+  fr
+}
+
+enum DataRegion {
+  US
+  EU
+  CA
+}
+
+enum SubscriptionPlan {
+  STARTER
+  PRO
+  BUSINESS
+}
+
+enum SubscriptionStatus {
+  active
+  canceled
+  past_due
+  unpaid
+  incomplete
+  trialing
+}
+
+enum CompanySize {
+  startup
+  small
+  medium
+  large
+  enterprise
+}
+
+enum RevenueRange {
+  under_1m
+  one_to_ten_m
+  ten_to_fifty_m
+  fifty_to_hundred_m
+  over_100m
+}
+
+enum ProspectStage {
+  new
+  contacted
+  meeting
+  negotiation
+  won
+  lost
+}
+
+enum ProspectSource {
+  csv_import
+  url_scraping
+  manual
+  api
+  integration
+}
+
+enum CampaignStatus {
+  draft
+  active
+  paused
+  completed
+  archived
+}
+
+enum MessageType {
+  initial
+  follow_up
+  manual
+  template
+}
+
+enum MessageChannel {
+  email
+  linkedin
+  sms
+  whatsapp
+}
+
+enum MessageStatus {
+  draft
+  scheduled
+  sent
+  delivered
+  opened
+  clicked
+  replied
+  bounced
+  failed
+}
+
+enum ActivityType {
+  call
+  meeting
+  email
+  note
+  task
+  demo
+  follow_up
+}
+
+enum InsightType {
+  performance
+  recommendation
+  alert
+  trend
+  prediction
+}
+
+enum InsightPriority {
+  low
+  normal
+  high
+  urgent
+}
+
+enum ReportType {
+  performance
+  prospects
+  sequences
+  campaigns
+  revenue
+}
