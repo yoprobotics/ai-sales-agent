@@ -1,0 +1,25 @@
+{
+  "name": "@ai-sales-agent/stripe",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\" --fix"
+  },
+  "dependencies": {
+    "stripe": "^14.5.0",
+    "@ai-sales-agent/core": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.2",
+    "jest": "^29.5.0",
+    "typescript": "^5.2.2"
+  }
+}
