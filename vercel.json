@@ -1,1 +1,26 @@
-{\n  \"framework\": \"nextjs\",\n  \"buildCommand\": \"npm run build:web\",\n  \"outputDirectory\": \"apps/web/.next\",\n  \"installCommand\": \"npm install\",\n  \"functions\": {\n    \"apps/web/pages/api/**/*.js\": {\n      \"maxDuration\": 30\n    }\n  }\n}
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "apps/web/package.json",
+      "use": "@vercel/next",
+      "config": {
+        "distDir": ".next"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "apps/web/$1"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "apps/web/src/pages/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  }
+}
