@@ -1,44 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { deleteSession } from '@/lib/auth/session';
+import { deleteCookie } from '@/lib/cookies';
+import { verifyAccessToken } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    // Get access token from cookie
-    const accessToken = request.cookies.get('access_token')?.value;
-
-    if (accessToken) {
-      // Delete session from database
-      await deleteSession(accessToken);
+    const token = req.cookies.get('accessToken')?.value;
+    
+    if (token) {
+      const user = await verifyAccessToken(token);
+      
+      if (user) {
+        // Clear refresh token in database
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            refreshToken: null,
+            refreshTokenExp: null,
+          }
+        });
+        
+        // Log audit trail
+        await prisma.auditLog.create({
+          data: {
+            userId: user.id,
+            action: 'USER_LOGOUT',
+            entityType: 'User',
+            entityId: user.id,
+            ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip'),
+            userAgent: req.headers.get('user-agent'),
+          }
+        });
+      }
     }
-
-    // Clear cookies
+    
+    // Create response
     const response = NextResponse.json({
       success: true,
-      message: 'Logged out successfully',
+      message: 'Logged out successfully'
     });
-
-    // Clear auth cookies
-    response.cookies.set('access_token', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/',
-    });
-
-    response.cookies.set('refresh_token', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/',
-    });
-
+    
+    // Clear cookies
+    deleteCookie(response, 'accessToken');
+    deleteCookie(response, 'refreshToken');
+    
     return response;
+    
   } catch (error) {
     console.error('Logout error:', error);
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Logout failed' },
       { status: 500 }
     );
   }

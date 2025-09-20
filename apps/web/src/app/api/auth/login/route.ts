@@ -1,132 +1,128 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { verifyPassword } from '@/lib/auth/password';
-import { generateAccessToken, generateRefreshToken } from '@/lib/auth/jwt';
-import { createSession } from '@/lib/auth/session';
-import { loginRateLimit } from '@/lib/auth/rate-limit';
-import { UserLoginSchema } from '@ai-sales-agent/core';
-import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
+import { UserLoginSchema } from '@ai-sales-agent/core/schemas';
+import { validatePassword, generateTokens } from '@/lib/auth';
+import { setCookie } from '@/lib/cookies';
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    // Check rate limit
-    const rateLimitResult = loginRateLimit.check(request);
-    if (!rateLimitResult.success) {
-      return NextResponse.json(
-        {
-          error: 'Too many login attempts',
-          remaining: rateLimitResult.remaining,
-          resetAt: rateLimitResult.resetAt,
-        },
-        { status: 429 }
-      );
-    }
-
-    // Parse and validate request body
-    const body = await request.json();
+    const body = await req.json();
+    
+    // Validate input
     const validatedData = UserLoginSchema.parse(body);
-
-    // Find user by email
+    
+    // Find user
     const user = await prisma.user.findUnique({
       where: { email: validatedData.email },
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        plan: true,
+        emailVerified: true,
+      }
     });
-
+    
     if (!user) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
       );
     }
-
-    // Verify password
-    const isValidPassword = await verifyPassword(
-      validatedData.password,
-      user.passwordHash
-    );
-
-    if (!isValidPassword) {
+    
+    // Validate password
+    const isPasswordValid = await validatePassword(validatedData.password, user.passwordHash);
+    
+    if (!isPasswordValid) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
       );
     }
-
-    // Reset rate limit on successful login
-    loginRateLimit.reset(request);
-
-    // Create JWT tokens
-    const jwtUser = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      plan: user.plan,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      language: user.language,
-      dataRegion: user.dataRegion,
-    };
-
-    const accessToken = await generateAccessToken(jwtUser);
-    const refreshToken = await generateRefreshToken(jwtUser);
-
-    // Create session
-    await createSession(
-      user.id,
-      accessToken,
-      refreshToken,
-      request.headers.get('user-agent') || undefined,
-      request.ip || request.headers.get('x-forwarded-for') || undefined
-    );
-
-    // Update last login
+    
+    // Check if email is verified
+    if (!user.emailVerified) {
+      return NextResponse.json(
+        { error: 'Please verify your email first' },
+        { status: 403 }
+      );
+    }
+    
+    // Generate tokens
+    const { accessToken, refreshToken } = await generateTokens(user);
+    
+    // Update user with refresh token and last login
     await prisma.user.update({
       where: { id: user.id },
-      data: { lastLoginAt: new Date() },
+      data: {
+        refreshToken,
+        refreshTokenExp: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        lastLoginAt: new Date()
+      }
     });
-
-    // Set cookies and return response
+    
+    // Create response
     const response = NextResponse.json({
       success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        plan: user.plan,
-        isEmailVerified: user.isEmailVerified,
-      },
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          plan: user.plan,
+        },
+        accessToken
+      }
     });
-
-    // Set auth cookies
-    response.cookies.set('access_token', accessToken, {
+    
+    // Set httpOnly cookies
+    setCookie(response, 'accessToken', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 15 * 60, // 15 minutes
-      path: '/',
+      path: '/'
     });
-
-    response.cookies.set('refresh_token', refreshToken, {
+    
+    setCookie(response, 'refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: validatedData.rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60, // 30 days if remember me
-      path: '/',
+      sameSite: 'strict',
+      maxAge: validatedData.rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60, // 30 days if remember me, else 7 days
+      path: '/'
     });
-
+    
+    // Log audit trail
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: 'USER_LOGIN',
+        entityType: 'User',
+        entityId: user.id,
+        ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip'),
+        userAgent: req.headers.get('user-agent'),
+      }
+    });
+    
     return response;
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+    
+  } catch (error: any) {
+    console.error('Login error:', error);
+    
+    if (error.name === 'ZodError') {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
         { status: 400 }
       );
     }
-
-    console.error('Login error:', error);
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Login failed' },
       { status: 500 }
     );
   }

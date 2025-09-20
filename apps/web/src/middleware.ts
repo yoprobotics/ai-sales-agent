@@ -1,114 +1,99 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyAccessToken, verifyRefreshToken, generateAccessToken } from '@/lib/auth/jwt';
+import { verifyAccessToken } from './lib/auth';
 
-// Routes that don't require authentication
-const publicRoutes = [
+const PUBLIC_PATHS = [
   '/',
   '/login',
   '/register',
   '/forgot-password',
   '/reset-password',
+  '/verify-email',
   '/api/auth/login',
   '/api/auth/register',
+  '/api/auth/refresh',
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
-  '/api/health',
+  '/api/auth/verify-email',
 ];
 
-// Admin-only routes
-const adminRoutes = [
+const ADMIN_PATHS = [
   '/admin',
   '/api/admin',
 ];
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // Skip authentication for public routes
-  if (publicRoutes.some(route => pathname.startsWith(route))) {
+  const path = request.nextUrl.pathname;
+  
+  // Allow public paths
+  if (PUBLIC_PATHS.some(publicPath => path.startsWith(publicPath))) {
     return NextResponse.next();
   }
-
-  // Get tokens from cookies
-  const accessToken = request.cookies.get('access_token')?.value;
-  const refreshToken = request.cookies.get('refresh_token')?.value;
-
-  // If no tokens, redirect to login
-  if (!accessToken && !refreshToken) {
-    if (pathname.startsWith('/api/')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-  // Try to verify access token
-  let user = null;
-  if (accessToken) {
-    const payload = await verifyAccessToken(accessToken);
-    if (payload && payload.type === 'access') {
-      user = payload.user;
-    }
-  }
-
-  // If access token is invalid, try refresh token
-  if (!user && refreshToken) {
-    const payload = await verifyRefreshToken(refreshToken);
-    if (payload && payload.type === 'refresh') {
-      // Generate new access token
-      const newAccessToken = await generateAccessToken(payload.user);
-      
-      // Create response with new access token
-      const response = NextResponse.next();
-      response.cookies.set('access_token', newAccessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 15 * 60, // 15 minutes
-        path: '/',
-      });
-      
-      user = payload.user;
-      
-      // Add user to request headers for API routes
-      response.headers.set('x-user', JSON.stringify(user));
-      
-      return response;
-    }
-  }
-
-  // If still no user, redirect to login
-  if (!user) {
-    if (pathname.startsWith('/api/')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-  // Check admin routes
-  if (adminRoutes.some(route => pathname.startsWith(route))) {
-    if (user.role !== 'ADMIN') {
-      if (pathname.startsWith('/api/')) {
-        return NextResponse.json(
-          { error: 'Forbidden' },
-          { status: 403 }
-        );
-      }
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-  }
-
-  // Add user to request headers for API routes
-  const response = NextResponse.next();
-  response.headers.set('x-user', JSON.stringify(user));
   
-  return response;
+  // Check for access token
+  const accessToken = request.cookies.get('accessToken')?.value;
+  
+  if (!accessToken) {
+    // Redirect to login for web pages
+    if (!path.startsWith('/api/')) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    // Return 401 for API routes
+    return NextResponse.json(
+      { error: 'Authentication required' },
+      { status: 401 }
+    );
+  }
+  
+  // Verify token
+  const user = await verifyAccessToken(accessToken);
+  
+  if (!user) {
+    // Try to refresh token
+    const refreshToken = request.cookies.get('refreshToken')?.value;
+    
+    if (refreshToken) {
+      // Redirect to refresh endpoint
+      if (!path.startsWith('/api/')) {
+        return NextResponse.redirect(new URL('/api/auth/refresh?redirect=' + path, request.url));
+      }
+    }
+    
+    // Token invalid, redirect to login
+    if (!path.startsWith('/api/')) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    return NextResponse.json(
+      { error: 'Invalid or expired token' },
+      { status: 401 }
+    );
+  }
+  
+  // Check admin access
+  if (ADMIN_PATHS.some(adminPath => path.startsWith(adminPath))) {
+    if (user.role !== 'ADMIN') {
+      if (!path.startsWith('/api/')) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+  }
+  
+  // Add user to request headers for use in API routes
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-user-id', user.id);
+  requestHeaders.set('x-user-email', user.email);
+  requestHeaders.set('x-user-role', user.role);
+  requestHeaders.set('x-user-plan', user.plan);
+  
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 export const config = {
@@ -120,6 +105,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public folder
      */
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
