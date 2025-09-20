@@ -1,1 +1,9 @@
-'use client';\n\nimport { QueryClient, QueryClientProvider } from '@tanstack/react-query';\nimport { ThemeProvider } from 'next-themes';\nimport { useState } from 'react';\nimport { AuthProvider } from '@/contexts/auth-context';\nimport { I18nProvider } from '@/contexts/i18n-context';\n\ninterface ProvidersProps {\n  children: React.ReactNode;\n}\n\nexport function Providers({ children }: ProvidersProps) {\n  const [queryClient] = useState(\n    () =>\n      new QueryClient({\n        defaultOptions: {\n          queries: {\n            staleTime: 60 * 1000, // 1 minute\n            cacheTime: 10 * 60 * 1000, // 10 minutes\n            retry: (failureCount, error: any) => {\n              // Don't retry on 4xx errors\n              if (error?.status >= 400 && error?.status < 500) {\n                return false;\n              }\n              return failureCount < 3;\n            },\n            refetchOnWindowFocus: false,\n          },\n          mutations: {\n            retry: 1,\n          },\n        },\n      })\n  );\n\n  return (\n    <QueryClientProvider client={queryClient}>\n      <ThemeProvider\n        attribute=\"class\"\n        defaultTheme=\"system\"\n        enableSystem\n        disableTransitionOnChange\n      >\n        <I18nProvider>\n          <AuthProvider>\n            {children}\n          </AuthProvider>\n        </I18nProvider>\n      </ThemeProvider>\n    </QueryClientProvider>\n  );\n}\n
+'use client';
+
+interface ProvidersProps {
+  children: React.ReactNode;
+}
+
+export function Providers({ children }: ProvidersProps) {
+  return <>{children}</>;
+}
