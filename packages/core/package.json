@@ -1,1 +1,24 @@
-{\n  \"name\": \"@ai-sales-agent/core\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"main\": \"./index.ts\",\n  \"types\": \"./index.ts\",\n  \"exports\": {\n    \".\": \"./index.ts\"\n  },\n  \"scripts\": {\n    \"lint\": \"eslint \\\"**/*.ts\\\" --fix\",\n    \"typecheck\": \"tsc --noEmit\",\n    \"clean\": \"rm -rf .turbo\"\n  },\n  \"dependencies\": {\n    \"zod\": \"^3.22.4\",\n    \"@types/bcryptjs\": \"^2.4.4\",\n    \"bcryptjs\": \"^2.4.3\"\n  },\n  \"devDependencies\": {\n    \"@ai-sales-agent/eslint-config\": \"*\",\n    \"@ai-sales-agent/typescript-config\": \"*\",\n    \"eslint\": \"^8.48.0\",\n    \"typescript\": \"^5.2.2\"\n  }\n}
+{
+  "name": "@ai-sales-agent/core",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "lint": "eslint \"**/*.ts\" --fix",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .turbo"
+  },
+  "dependencies": {
+    "zod": "^3.22.4",
+    "@types/bcryptjs": "^2.4.4",
+    "bcryptjs": "^2.4.3"
+  },
+  "devDependencies": {
+    "eslint": "^8.48.0",
+    "typescript": "^5.2.2"
+  }
+}
