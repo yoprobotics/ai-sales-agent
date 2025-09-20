@@ -28,6 +28,31 @@ export interface SendEmailData {
   templateId?: string;
   dynamicTemplateData?: Record<string, any>;
   sandboxMode?: boolean;
+  asmGroupId?: number; // Unsubscribe group ID for compliance
+  trackingSettings?: {
+    clickTracking?: {
+      enable: boolean;
+      enableText?: boolean;
+    };
+    openTracking?: {
+      enable: boolean;
+      substitutionTag?: string;
+    };
+    subscriptionTracking?: {
+      enable: boolean;
+      text?: string;
+      html?: string;
+      substitutionTag?: string;
+    };
+    ganalytics?: {
+      enable: boolean;
+      utmSource?: string;
+      utmMedium?: string;
+      utmTerm?: string;
+      utmContent?: string;
+      utmCampaign?: string;
+    };
+  };
 }
 
 export interface SendBulkEmailData {
@@ -50,6 +75,8 @@ export interface SendBulkEmailData {
   categories?: string[];
   batchId?: string;
   sandboxMode?: boolean;
+  asmGroupId?: number;
+  trackingSettings?: SendEmailData['trackingSettings'];
 }
 
 export interface EmailTemplate {
@@ -61,12 +88,26 @@ export interface EmailTemplate {
   variables?: string[];
 }
 
+export interface TemplateVersion {
+  id: string;
+  templateId: string;
+  name: string;
+  subject: string;
+  htmlContent: string;
+  plainContent?: string;
+  active: boolean;
+  editor?: 'code' | 'design';
+  thumbnailUrl?: string;
+  updatedAt: Date;
+}
+
 export interface EmailTemplateData {
   [key: string]: any;
 }
 
 // Pre-defined email templates
 export const EMAIL_TEMPLATES = {
+  // Transactional templates
   WELCOME: {
     id: 'welcome',
     name: 'Welcome Email',
@@ -85,6 +126,8 @@ export const EMAIL_TEMPLATES = {
     subject: 'Reset your password',
     variables: ['firstName', 'resetUrl', 'expiresIn'],
   },
+  
+  // Subscription templates
   SUBSCRIPTION_ACTIVATED: {
     id: 'subscription_activated',
     name: 'Subscription Activated',
@@ -103,6 +146,8 @@ export const EMAIL_TEMPLATES = {
     subject: 'Payment failed - Action required',
     variables: ['firstName', 'amount', 'updatePaymentUrl', 'suspendDate'],
   },
+  
+  // Prospect activity templates
   PROSPECT_REPLIED: {
     id: 'prospect_replied',
     name: 'Prospect Replied',
@@ -127,6 +172,26 @@ export const EMAIL_TEMPLATES = {
     subject: 'New AI insight for your prospects',
     variables: ['firstName', 'insightTitle', 'insightDescription', 'actionUrl'],
   },
+  
+  // Compliance templates (RGPD/CCPA)
+  OPT_IN_CONFIRMATION: {
+    id: 'opt_in_confirmation',
+    name: 'Opt-in Confirmation',
+    subject: 'Please confirm your subscription',
+    variables: ['firstName', 'confirmationUrl', 'expiryHours', 'consentText'],
+  },
+  OPT_IN_WELCOME: {
+    id: 'opt_in_welcome',
+    name: 'Welcome After Opt-in',
+    subject: 'Welcome! Your subscription is confirmed',
+    variables: ['firstName', 'dashboardUrl', 'unsubscribeUrl'],
+  },
+  UNSUBSCRIBE_CONFIRMATION: {
+    id: 'unsubscribe_confirmation',
+    name: 'Unsubscribe Confirmation',
+    subject: 'You have been unsubscribed',
+    variables: ['firstName', 'resubscribeUrl', 'contactUrl'],
+  },
 } as const;
 
 export interface EmailResponse {
@@ -150,6 +215,22 @@ export interface EmailStats {
   bounced: number;
   spam: number;
   unsubscribed: number;
+}
+
+export interface CategoryStats {
+  category: string;
+  stats: EmailStats;
+}
+
+export interface AdvancedStats extends EmailStats {
+  uniqueOpens: number;
+  uniqueClicks: number;
+  openRate: number;
+  clickRate: number;
+  bounceRate: number;
+  unsubscribeRate: number;
+  spamRate: number;
+  deliveryRate: number;
 }
 
 export interface SuppressionListEntry {
