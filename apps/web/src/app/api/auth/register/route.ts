@@ -1,32 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { hashPassword } from '@/lib/auth/password';
-import { generateAccessToken, generateRefreshToken, setAuthCookies } from '@/lib/auth/jwt';
-import { createSession } from '@/lib/auth/session';
-import { UserRegistrationSchema } from '@ai-sales-agent/core';
-import { z } from 'zod';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { prisma } from '@/lib/prisma';
+import { UserRegistrationSchema } from '@ai-sales-agent/core/schemas';
+import { setCookie } from '@/lib/cookies';
+import { generateTokens } from '@/lib/auth';
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    // Parse and validate request body
-    const body = await request.json();
+    const body = await req.json();
+    
+    // Validate input
     const validatedData = UserRegistrationSchema.parse(body);
-
+    
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email: validatedData.email },
+      where: { email: validatedData.email }
     });
-
+    
     if (existingUser) {
       return NextResponse.json(
-        { error: 'User already exists' },
+        { error: 'Email already registered' },
         { status: 400 }
       );
     }
-
+    
     // Hash password
-    const passwordHash = await hashPassword(validatedData.password);
-
+    const passwordHash = await bcrypt.hash(validatedData.password, 12);
+    
     // Create user
     const user = await prisma.user.create({
       data: {
@@ -38,77 +39,69 @@ export async function POST(request: NextRequest) {
         language: validatedData.language,
         dataRegion: validatedData.dataRegion,
         timezone: validatedData.timezone,
-        role: 'CLIENT',
-        plan: 'STARTER',
       },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        plan: true,
+      }
     });
-
-    // Create JWT tokens
-    const jwtUser = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      plan: user.plan,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      language: user.language,
-      dataRegion: user.dataRegion,
-    };
-
-    const accessToken = await generateAccessToken(jwtUser);
-    const refreshToken = await generateRefreshToken(jwtUser);
-
-    // Create session
-    await createSession(
-      user.id,
-      accessToken,
-      refreshToken,
-      request.headers.get('user-agent') || undefined,
-      request.ip || request.headers.get('x-forwarded-for') || undefined
-    );
-
-    // Set cookies and return response
+    
+    // Generate tokens
+    const { accessToken, refreshToken } = await generateTokens(user);
+    
+    // Update user with refresh token
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        refreshToken,
+        refreshTokenExp: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+      }
+    });
+    
+    // Create response with cookies
     const response = NextResponse.json({
       success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        plan: user.plan,
-      },
+      data: {
+        user,
+        accessToken
+      }
     });
-
-    // Set auth cookies
-    response.cookies.set('access_token', accessToken, {
+    
+    // Set httpOnly cookies
+    setCookie(response, 'accessToken', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 15 * 60, // 15 minutes
-      path: '/',
+      path: '/'
     });
-
-    response.cookies.set('refresh_token', refreshToken, {
+    
+    setCookie(response, 'refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60, // 7 days
-      path: '/',
+      path: '/'
     });
-
+    
     return response;
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+    
+  } catch (error: any) {
+    console.error('Registration error:', error);
+    
+    if (error.name === 'ZodError') {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
         { status: 400 }
       );
     }
-
-    console.error('Registration error:', error);
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Registration failed' },
       { status: 500 }
     );
   }
