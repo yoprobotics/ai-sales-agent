@@ -1,103 +1,125 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/get-user';
-import { createCheckoutSession, getOrCreateCustomer, getPriceForPlan } from '@ai-sales-agent/stripe';
+import { createCheckoutSession, createStripeCustomer, getPriceIdFromPlan } from '@/lib/stripe';
+import { verifyAuth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { z } from 'zod';
+
+// Schema validation for checkout request
+const CheckoutSchema = z.object({
+  plan: z.enum(['STARTER', 'PRO', 'BUSINESS']),
+  interval: z.enum(['monthly', 'yearly']),
+});
 
 export async function POST(request: NextRequest) {
   try {
-    const user = getCurrentUser();
-    if (!user) {
+    // Verify authentication
+    const authResult = await verifyAuth(request);
+    if (!authResult.authenticated) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Authentication required' },
         { status: 401 }
       );
     }
 
+    // Parse and validate request body
     const body = await request.json();
-    const { plan, interval = 'month' } = body;
-
-    if (!plan || !['STARTER', 'PRO', 'BUSINESS'].includes(plan)) {
+    const validationResult = CheckoutSchema.safeParse(body);
+    
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: 'Invalid plan' },
+        { error: 'Invalid request data', details: validationResult.error.errors },
         { status: 400 }
       );
     }
 
-    // Get or create Stripe customer
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
+    const { plan, interval } = validationResult.data;
+    const userId = authResult.userId;
+
+    // Get user with subscription
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
       include: { subscription: true },
     });
 
-    if (!dbUser) {
+    if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
       );
     }
 
-    let stripeCustomerId = dbUser.subscription?.stripeCustomerId;
+    // Check if user already has an active subscription
+    if (user.subscription?.status === 'ACTIVE' || user.subscription?.status === 'TRIALING') {
+      return NextResponse.json(
+        { error: 'You already have an active subscription. Please manage it from the billing portal.' },
+        { status: 400 }
+      );
+    }
 
+    // Get Stripe customer ID or create new customer
+    let stripeCustomerId = user.subscription?.stripeCustomerId;
+    
     if (!stripeCustomerId) {
-      // Create Stripe customer
-      const customer = await getOrCreateCustomer(dbUser.email, {
-        name: `${dbUser.firstName} ${dbUser.lastName}`,
-        metadata: {
-          userId: dbUser.id,
-          plan: dbUser.plan,
-        },
-      });
-
+      // Create new Stripe customer
+      const customer = await createStripeCustomer(
+        user.email,
+        `${user.firstName} ${user.lastName}`,
+        {
+          userId: user.id,
+          companyName: user.companyName || '',
+        }
+      );
+      
       stripeCustomerId = customer.id;
 
       // Create or update subscription record
       await prisma.subscription.upsert({
-        where: { userId: dbUser.id },
+        where: { userId: user.id },
         create: {
-          userId: dbUser.id,
-          plan: dbUser.plan,
-          status: 'INCOMPLETE',
+          userId: user.id,
           stripeCustomerId,
+          plan,
+          status: 'INCOMPLETE',
         },
         update: {
           stripeCustomerId,
+          plan,
         },
       });
     }
 
     // Get price ID for the selected plan
-    const priceId = await getPriceForPlan(plan, interval as 'month' | 'year');
-
+    const priceId = getPriceIdFromPlan(plan, interval);
+    
     if (!priceId) {
       return NextResponse.json(
-        { error: 'Price not found for plan' },
+        { error: 'Invalid plan or interval' },
         { status: 400 }
       );
     }
 
     // Create checkout session
-    const session = await createCheckoutSession({
-      customerId: stripeCustomerId,
+    const baseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
+    const session = await createCheckoutSession(
+      stripeCustomerId,
       priceId,
-      mode: 'subscription',
-      successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
-      cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
-      metadata: {
-        userId: dbUser.id,
+      `${baseUrl}/dashboard/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      `${baseUrl}/dashboard/billing?canceled=true`,
+      {
+        userId: user.id,
         plan,
         interval,
-      },
-    });
+      }
+    );
 
     return NextResponse.json({
-      success: true,
-      checkoutUrl: session.url,
+      url: session.url,
       sessionId: session.id,
     });
-  } catch (error) {
-    console.error('Checkout session creation error:', error);
+  } catch (error: any) {
+    console.error('Error creating checkout session:', error);
     return NextResponse.json(
-      { error: 'Failed to create checkout session' },
+      { error: 'Failed to create checkout session', details: error.message },
       { status: 500 }
     );
   }
