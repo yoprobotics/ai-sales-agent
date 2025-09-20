@@ -1,45 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/get-user';
-import { createPortalSession } from '@ai-sales-agent/stripe';
+import { createBillingPortalSession } from '@/lib/stripe';
+import { verifyAuth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
-    const user = getCurrentUser();
-    if (!user) {
+    // Verify authentication
+    const authResult = await verifyAuth(request);
+    if (!authResult.authenticated) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Authentication required' },
         { status: 401 }
       );
     }
 
-    // Get user's Stripe customer ID
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      include: { subscription: true },
+    const userId = authResult.userId;
+
+    // Get user subscription
+    const subscription = await prisma.subscription.findUnique({
+      where: { userId },
     });
 
-    if (!dbUser?.subscription?.stripeCustomerId) {
+    if (!subscription || !subscription.stripeCustomerId) {
       return NextResponse.json(
-        { error: 'No subscription found' },
-        { status: 400 }
+        { error: 'No subscription found. Please subscribe to a plan first.' },
+        { status: 404 }
       );
     }
 
-    // Create portal session
-    const session = await createPortalSession(
-      dbUser.subscription.stripeCustomerId,
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing`
+    // Create billing portal session
+    const baseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
+    const session = await createBillingPortalSession(
+      subscription.stripeCustomerId,
+      `${baseUrl}/dashboard/billing`
     );
 
     return NextResponse.json({
-      success: true,
-      portalUrl: session.url,
+      url: session.url,
     });
-  } catch (error) {
-    console.error('Portal session creation error:', error);
+  } catch (error: any) {
+    console.error('Error creating billing portal session:', error);
     return NextResponse.json(
-      { error: 'Failed to create portal session' },
+      { error: 'Failed to create billing portal session', details: error.message },
       { status: 500 }
     );
   }
