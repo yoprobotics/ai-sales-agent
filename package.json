@@ -12,18 +12,27 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:unit": "turbo run test:unit",
+    "test:integration": "turbo run test:integration",
+    "test:e2e": "turbo run test:e2e",
+    "test:stripe": "cd apps/web && npm run test:stripe",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "build:web": "npm install && cd apps/web && npm run build",
     "start:web": "cd apps/web && npm start",
     "vercel-build": "npm run build:web",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:push": "prisma db push",
-    "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "prisma migrate reset"
+    "db:generate": "cd apps/web && prisma generate",
+    "db:migrate": "cd apps/web && prisma migrate dev",
+    "db:push": "cd apps/web && prisma db push",
+    "db:studio": "cd apps/web && prisma studio",
+    "db:seed": "cd apps/web && tsx prisma/seed.ts",
+    "db:reset": "cd apps/web && prisma migrate reset",
+    "stripe:setup": "node scripts/stripe-setup.js",
+    "stripe:webhook": "stripe listen --forward-to localhost:3000/api/webhooks/stripe",
+    "stripe:test": "node scripts/stripe-test.js",
+    "setup": "npm install && npm run db:generate && npm run db:migrate",
+    "setup:complete": "npm run setup && npm run stripe:setup && npm run db:seed"
   },
   "devDependencies": {
     "@turbo/gen": "^1.10.12",
@@ -33,10 +42,15 @@
     "prisma": "^5.7.0",
     "tsx": "^4.6.2",
     "turbo": "^1.10.12",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "@types/jest": "^29.5.11",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1"
   },
   "dependencies": {
-    "@prisma/client": "^5.7.0"
+    "@prisma/client": "^5.7.0",
+    "dotenv": "^16.3.1",
+    "stripe": "^14.10.0"
   },
   "packageManager": "npm@10.0.0",
   "engines": {
