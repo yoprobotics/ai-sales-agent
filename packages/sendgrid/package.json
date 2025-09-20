@@ -16,6 +16,7 @@
   "dependencies": {
     "@sendgrid/mail": "^8.1.0",
     "@sendgrid/client": "^8.1.0",
+    "@sendgrid/eventwebhook": "^7.7.0",
     "@ai-sales-agent/core": "*",
     "handlebars": "^4.7.8"
   },
