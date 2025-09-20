@@ -43,7 +43,15 @@
     "stripe:test": "node scripts/stripe-test.js",
     "setup": "npm install && npm run db:generate && npm run db:migrate",
     "setup:complete": "npm run setup && npm run stripe:setup && npm run db:seed",
-    "playwright:install": "npx playwright install --with-deps"
+    "playwright:install": "npx playwright install --with-deps",
+    "env:validate": "node scripts/validate-env.js",
+    "env:generate": "node scripts/validate-env.js generate",
+    "predev": "npm run env:validate",
+    "prebuild": "npm run env:validate",
+    "postinstall": "npm run db:generate || true",
+    "logs:tail": "tail -f apps/api/logs/*.log | jq '.'",
+    "logs:errors": "tail -f apps/api/logs/*.log | jq 'select(.level == \"ERROR\")'",
+    "logs:openai": "tail -f apps/api/logs/openai.log | jq '{model, tokens: .totalTokens, cost, latency}'"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.1",
