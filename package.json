@@ -8,39 +8,26 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "cd apps/web && npm run dev",
-    "build": "cd apps/web && npm run build",
-    "start": "cd apps/web && npm run start",
-    "lint": "cd apps/web && npm run lint",
-    "typecheck": "cd apps/web && npm run typecheck",
-    "db:generate": "cd apps/web && npm run db:generate",
-    "db:push": "cd apps/web && npm run db:push",
-    "db:migrate": "cd apps/web && npm run db:migrate",
-    "db:studio": "cd apps/web && npm run db:studio",
-    "verify": "bash scripts/verify-deployment.sh"
+    "build": "turbo run build",
+    "build:web": "cd apps/web && npm run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "vercel-build": "npm run build:web"
   },
+  "devDependencies": {
+    "@turbo/gen": "^1.10.12",
+    "@types/node": "^20.5.2",
+    "eslint": "^8.48.0",
+    "prettier": "^3.0.0",
+    "turbo": "^1.10.12",
+    "typescript": "^5.2.2"
+  },
+  "packageManager": "npm@10.0.0",
   "engines": {
-    "node": ">=20.0.0",
-    "npm": ">=10.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/yoprobotics/ai-sales-agent.git"
-  },
-  "keywords": [
-    "saas",
-    "b2b",
-    "sales",
-    "prospecting",
-    "ai",
-    "crm",
-    "nextjs",
-    "typescript"
-  ],
-  "author": "YoProbotics <yoprobotics@gmail.com>",
-  "license": "PROPRIETARY",
-  "bugs": {
-    "url": "https://github.com/yoprobotics/ai-sales-agent/issues"
-  },
-  "homepage": "https://github.com/yoprobotics/ai-sales-agent#readme"
+    "node": ">=20.0.0"
+  }
 }
