@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   return NextResponse.json({
-    status: 'ok',
+    status: 'healthy',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    message: 'AI Sales Agent API is running'
+    version: '1.0.0',
+    environment: process.env.NODE_ENV || 'development'
   });
 }
