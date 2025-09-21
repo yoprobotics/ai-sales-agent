@@ -1,117 +1,78 @@
-# 🚀 Guide de Déploiement Vercel - AI Sales Agent
+# Vercel Deployment Instructions
 
-## ✅ Corrections Apportées
+## 🚀 Quick Deploy
 
-Les problèmes de déploiement suivants ont été corrigés :
+The project is configured to deploy automatically on Vercel when you push to the main branch.
 
-### 1. Configuration Vercel (`vercel.json`)
-- ✅ Configuration monorepo corrigée
-- ✅ Chemin vers l'app web spécifié correctly
-- ✅ Configuration des fonctions API mise à jour
+## 🔧 Manual Configuration
 
-### 2. Dépendances (`apps/web/package.json`)
-- ✅ Ajout de Tailwind CSS et dépendances manquantes
-- ✅ Scripts de build optimisés
-- ✅ Types TypeScript inclus
+If you need to configure Vercel manually:
 
-### 3. Configuration TypeScript
-- ✅ `tsconfig.json` ajouté avec chemins d'alias
-- ✅ `next-env.d.ts` pour les types Next.js
-- ✅ Configuration compatible avec Next.js 14
+1. **Go to Vercel Dashboard**
+   - Navigate to your project settings
 
-### 4. Configuration PostCSS
-- ✅ `postcss.config.js` pour Tailwind CSS
-- ✅ Autoprefixer configuré
+2. **Environment Variables**
+   
+   Add the following environment variables in Settings > Environment Variables:
 
-### 5. Variables d'Environnement
-- ✅ `.env.example` avec toutes les variables nécessaires
+   ### Required Variables
+   
+   ```bash
+   # Database (PostgreSQL - Use Neon or Supabase)
+   DATABASE_URL=postgresql://username:password@host:5432/ai_sales_agent
+   
+   # JWT Secrets (Generate secure random strings)
+   JWT_SECRET=your-super-secret-jwt-key-at-least-32-chars
+   JWT_REFRESH_SECRET=your-super-secret-refresh-key-at-least-32-chars
+   ```
+   
+   ### Optional Variables (for full functionality)
+   
+   ```bash
+   # Stripe (for payments)
+   STRIPE_PUBLISHABLE_KEY=pk_live_...
+   STRIPE_SECRET_KEY=sk_live_...
+   STRIPE_WEBHOOK_SECRET=whsec_...
+   
+   # SendGrid (for emails)
+   SENDGRID_API_KEY=SG...
+   SENDGRID_FROM_EMAIL=noreply@yourdomain.com
+   
+   # OpenAI (for AI features)
+   OPENAI_API_KEY=sk-...
+   
+   # Security
+   ENCRYPTION_KEY=your-32-character-encryption-key
+   ```
 
-## 🔧 Instructions de Déploiement
+3. **Build Settings**
+   
+   The build settings are already configured in `vercel.json`:
+   - Build Command: `bash vercel-build.sh`
+   - Output Directory: `apps/web/.next`
+   - Install Command: Handled by custom script
 
-### 1. Connecter le Repository à Vercel
+## 📝 Notes
 
-1. Aller sur [vercel.com](https://vercel.com)
-2. Cliquer sur "New Project"
-3. Importer le repository `yoprobotics/ai-sales-agent`
+- Tailwind CSS and all required dependencies are now in the `dependencies` section to ensure they're installed in production
+- The custom build script (`vercel-build.sh`) handles Prisma generation
+- Environment variables starting with `NEXT_PUBLIC_` are exposed to the browser
 
-### 2. Configuration Vercel
+## 🐛 Troubleshooting
 
-#### Framework Preset
-- Framework: **Next.js**
-- Root Directory: **Laissez vide** (détection automatique via vercel.json)
+### Build Fails with "Cannot find module 'tailwindcss'"
+This issue has been fixed by:
+1. Moving Tailwind CSS to dependencies (not devDependencies)
+2. Using a custom build script that ensures all dependencies are installed
 
-#### Build & Output Settings
-- Build Command: `npm run build:web` (défini automatiquement)
-- Output Directory: `apps/web/.next` (défini automatiquement)
-- Install Command: `npm install` (défini automatiquement)
+### Prisma Client Issues
+The build script automatically generates the Prisma client during deployment.
 
-#### Variables d'Environnement
+### Environment Variables Not Working
+- Ensure variables are set in Vercel Dashboard
+- Restart the deployment after adding new variables
+- Check that sensitive variables don't have `NEXT_PUBLIC_` prefix
 
-Ajouter ces variables dans les settings Vercel :
+## 📞 Support
 
-```bash
-# Base de données (utiliser Neon ou Supabase)
-DATABASE_URL=postgresql://user:password@host:5432/ai_sales_agent
-
-# JWT
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-
-# Stripe
-STRIPE_PUBLISHABLE_KEY=pk_live_...
-STRIPE_SECRET_KEY=sk_live_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-
-# SendGrid
-SENDGRID_API_KEY=SG....
-
-# App
-NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
-NODE_ENV=production
-
-# OpenAI
-OPENAI_API_KEY=sk-...
-```
-
-### 3. Déploiement
-
-1. Cliquer sur **"Deploy"**
-2. Le build devrait maintenant réussir ✅
-
-### 4. Configuration Domaine (Optionnel)
-
-1. Aller dans Project Settings > Domains
-2. Ajouter votre domaine custom
-3. Configurer les DNS selon les instructions Vercel
-
-## 🛠️ Développement Local
-
-```bash
-# Installation
-npm install
-
-# Démarrage en mode dev
-npm run dev
-
-# Build local (test)
-npm run build:web
-```
-
-## 📝 Notes Importantes
-
-- ✅ **Monorepo**: Configuration Vercel optimisée pour la structure monorepo
-- ✅ **TypeScript**: Configuration complète avec types et aliases
-- ✅ **Tailwind CSS**: Configuration et build optimisés
-- ✅ **Next.js 14**: App Router avec RSC (React Server Components)
-- ✅ **Variables d'env**: Template complet fourni
-
-## 🔍 Dépannage
-
-Si le déploiement échoue encore :
-
-1. Vérifier les logs de build dans Vercel Dashboard
-2. S'assurer que toutes les variables d'environnement sont configurées
-3. Vérifier que la base de données est accessible depuis Vercel
-
-## 🚀 Prêt pour le Déploiement !
-
-Tous les fichiers de configuration ont été corrigés. Vous pouvez maintenant déployer sur Vercel sans erreurs de build JSON.
+If you encounter any issues, please open an issue on GitHub.
