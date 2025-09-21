@@ -12,8 +12,12 @@ cd apps/web
 echo "📦 Installing web app dependencies..."
 npm install
 
-echo "🔍 Checking Tailwind CSS installation..."
-ls -la node_modules/tailwindcss || echo "⚠️ Tailwind CSS not found!"
+echo "🔍 Checking critical dependencies..."
+echo "TypeScript version:"
+npx tsc --version || echo "⚠️ TypeScript not found!"
+
+echo "Tailwind CSS:"
+ls -la node_modules/tailwindcss > /dev/null 2>&1 && echo "✅ Tailwind CSS installed" || echo "⚠️ Tailwind CSS not found!"
 
 echo "🎯 Generating Prisma Client..."
 npx prisma generate
