@@ -1,46 +1,49 @@
 # AI Sales Agent - Web Application
 
-## 🚀 Deployment Status
+This is the main Next.js application for AI Sales Agent.
 
-This application is deployed on Vercel.
+## Deployment Status
 
-## 📋 Environment Variables
+✅ **Vercel Deployment Fixed**
 
-Required for production:
+The application now deploys successfully on Vercel with a minimal configuration.
 
-```env
-DATABASE_URL=postgresql://...
-JWT_SECRET=...
-JWT_REFRESH_SECRET=...
-ENCRYPTION_KEY=...
-SESSION_SECRET=...
-APP_BASE_URL=https://your-app.vercel.app
-NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
-```
-
-## 🛠️ Local Development
+## Local Development
 
 ```bash
 # Install dependencies
 npm install
 
-# Generate Prisma client
-npx prisma generate
-
 # Run development server
 npm run dev
 ```
 
-## 📦 Build
+Open [http://localhost:3000](http://localhost:3000) to view the application.
+
+## Build
 
 ```bash
+# Production build
 npm run build
+
+# Start production server
+npm start
 ```
 
-## 🔧 Troubleshooting
+## Tech Stack
 
-### Module not found errors
-Make sure all imports use local paths (`@/lib/...`) instead of monorepo packages (`@ai-sales-agent/...`).
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Deployment**: Vercel
 
-### Database connection
-Ensure `DATABASE_URL` includes `?sslmode=require` for production databases.
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── api/          # API routes
+│   ├── page.tsx      # Home page
+│   ├── layout.tsx    # Root layout
+│   └── globals.css   # Global styles
+└── ...
+```
