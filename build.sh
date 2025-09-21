@@ -8,14 +8,11 @@ cd apps/web
 echo "📦 Installing dependencies..."
 npm install
 
-echo "🔍 Verifying Prisma installation..."
-if command -v prisma &> /dev/null; then
-    echo "✅ Prisma CLI found directly"
-    prisma generate
-else
-    echo "⚠️ Prisma not in PATH, using npx..."
-    npx prisma generate
-fi
+echo "🔍 Checking Prisma installation..."
+ls -la node_modules/.bin/ | grep prisma || echo "Prisma not found in node_modules/.bin/"
+
+echo "🎯 Generating Prisma Client..."
+npx prisma generate || echo "Failed to generate Prisma Client"
 
 echo "🏗️ Building Next.js application..."
 npm run build
