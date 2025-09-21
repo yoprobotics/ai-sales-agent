@@ -29,6 +29,8 @@
     "@radix-ui/react-toast": "^1.2.4",
     "@hookform/resolvers": "^3.9.1",
     "bcryptjs": "^2.4.3",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
@@ -50,8 +52,6 @@
     "@types/react-dom": "^18"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/jsonwebtoken": "^9.0.7",
     "eslint": "^8",
     "eslint-config-next": "14.2.32"
   }
