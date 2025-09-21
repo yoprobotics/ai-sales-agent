@@ -7,11 +7,15 @@ echo "📦 Installing dependencies..."
 npm install
 
 # Navigate to web app directory
-echo "🔍 Checking Prisma installation..."
-ls -la node_modules/.bin/prisma || echo "Prisma not in root"
+cd apps/web
+
+echo "📦 Installing web app dependencies..."
+npm install
+
+echo "🔍 Checking Tailwind CSS installation..."
+ls -la node_modules/tailwindcss || echo "⚠️ Tailwind CSS not found!"
 
 echo "🎯 Generating Prisma Client..."
-cd apps/web
 npx prisma generate
 
 echo "🏗️ Building Next.js application..."
