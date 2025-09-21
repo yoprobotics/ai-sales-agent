@@ -22,6 +22,46 @@ export function getPlanFromPriceId(priceId: string): string | null {
   return priceMap[priceId] || null
 }
 
+// Plan features configuration
+export const PLAN_FEATURES = {
+  STARTER: {
+    prospectsLimit: 200,
+    icpsLimit: 1,
+    sequencesLimit: 1,
+    messagesLimit: 1000,
+  },
+  PRO: {
+    prospectsLimit: 2000,
+    icpsLimit: 5,
+    sequencesLimit: 10,
+    messagesLimit: 10000,
+  },
+  BUSINESS: {
+    prospectsLimit: -1, // unlimited
+    icpsLimit: -1,
+    sequencesLimit: -1,
+    messagesLimit: -1,
+  },
+} as const
+
+// Webhook signature verification
+export function constructWebhookEvent(body: string, signature: string, secret: string) {
+  // Mock implementation for development
+  if (!secret || secret === 'mock_webhook_secret') {
+    return JSON.parse(body)
+  }
+  
+  // TODO: Implement actual Stripe webhook verification
+  // In production, this would use stripe.webhooks.constructEvent
+  try {
+    // For now, just parse and return the body
+    // In production, this should verify the signature
+    return JSON.parse(body)
+  } catch (error) {
+    throw new Error('Invalid webhook payload')
+  }
+}
+
 // Mock Stripe service for MVP
 export const stripeService = {
   createCustomer: async (email: string, name: string) => {
