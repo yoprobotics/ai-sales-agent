@@ -3,10 +3,5 @@
   "outputDirectory": "apps/web/.next",
   "installCommand": "echo 'Using custom build script'",
   "buildCommand": "bash vercel-build.sh",
-  "devCommand": "npm run dev",
-  "functions": {
-    "apps/web/app/api/**/*.ts": {
-      "maxDuration": 10
-    }
-  }
+  "devCommand": "npm run dev"
 }
