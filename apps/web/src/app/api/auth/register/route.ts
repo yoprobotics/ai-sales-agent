@@ -1,32 +1,30 @@
-import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { prisma } from '@/lib/prisma';
-import { UserRegistrationSchema } from '@ai-sales-agent/core/schemas';
-import { setCookie } from '@/lib/cookies';
-import { generateTokens } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
+import { prisma } from '@/lib/prisma'
+import { UserRegistrationSchema } from '@/lib/schemas'
+import { generateAccessToken, generateRefreshToken, setAuthCookies } from '@/lib/jwt'
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await req.json()
     
-    // Validate input
-    const validatedData = UserRegistrationSchema.parse(body);
+    // Validate request body
+    const validatedData = UserRegistrationSchema.parse(body)
     
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email: validatedData.email }
-    });
+    })
     
     if (existingUser) {
       return NextResponse.json(
-        { error: 'Email already registered' },
+        { error: 'User with this email already exists' },
         { status: 400 }
-      );
+      )
     }
     
     // Hash password
-    const passwordHash = await bcrypt.hash(validatedData.password, 12);
+    const passwordHash = await bcrypt.hash(validatedData.password, 12)
     
     // Create user
     const user = await prisma.user.create({
@@ -36,9 +34,11 @@ export async function POST(req: NextRequest) {
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
         companyName: validatedData.companyName,
-        language: validatedData.language,
-        dataRegion: validatedData.dataRegion,
-        timezone: validatedData.timezone,
+        language: validatedData.language || 'en',
+        dataRegion: validatedData.dataRegion || 'EU',
+        timezone: validatedData.timezone || 'UTC',
+        role: 'CLIENT',
+        plan: 'STARTER'
       },
       select: {
         id: true,
@@ -46,12 +46,13 @@ export async function POST(req: NextRequest) {
         firstName: true,
         lastName: true,
         role: true,
-        plan: true,
+        plan: true
       }
-    });
+    })
     
     // Generate tokens
-    const { accessToken, refreshToken } = await generateTokens(user);
+    const accessToken = generateAccessToken(user)
+    const refreshToken = generateRefreshToken(user.id)
     
     // Update user with refresh token
     await prisma.user.update({
@@ -60,49 +61,39 @@ export async function POST(req: NextRequest) {
         refreshToken,
         refreshTokenExp: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
       }
-    });
+    })
     
     // Create response with cookies
     const response = NextResponse.json({
       success: true,
-      data: {
-        user,
-        accessToken
-      }
-    });
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        plan: user.plan
+      },
+      accessToken
+    })
     
-    // Set httpOnly cookies
-    setCookie(response, 'accessToken', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60, // 15 minutes
-      path: '/'
-    });
+    // Set auth cookies
+    setAuthCookies(response, accessToken, refreshToken)
     
-    setCookie(response, 'refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-      path: '/'
-    });
-    
-    return response;
-    
+    return response
   } catch (error: any) {
-    console.error('Registration error:', error);
+    console.error('Registration error:', error)
     
     if (error.name === 'ZodError') {
       return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
+        { error: 'Invalid input', details: error.errors },
         { status: 400 }
-      );
+      )
     }
     
     return NextResponse.json(
-      { error: 'Registration failed' },
+      { error: 'Internal server error' },
       { status: 500 }
-    );
+    )
   }
 }
