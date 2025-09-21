@@ -36,6 +36,16 @@ yarn-error.log*
 # Typescript
 *.tsbuildinfo
 
-# Conflicting files (to avoid issues)
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+
+# Files to ignore for deployment
 apps/web/vercel.json
 apps/web/postcss.config.mjs
+apps/web/vercel.json.bak
