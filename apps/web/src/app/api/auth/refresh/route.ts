@@ -16,13 +16,22 @@ export async function POST(request: NextRequest) {
     // Verify refresh token
     const payload = verifyRefreshToken(refreshToken);
     
+    // Check if payload is not null
+    if (!payload) {
+      return NextResponse.json(
+        { error: 'Invalid refresh token' },
+        { status: 401 }
+      );
+    }
+    
     // Find session with refresh token
     const session = await prisma.session.findUnique({
       where: { refreshToken },
       include: { user: true },
     });
     
-    if (!session || session.userId !== payload.userId) {
+    // Using 'id' instead of 'userId' to match the JWT payload structure
+    if (!session || session.userId !== payload.id) {
       return NextResponse.json(
         { error: 'Invalid refresh token' },
         { status: 401 }

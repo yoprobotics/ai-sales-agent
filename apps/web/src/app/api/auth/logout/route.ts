@@ -10,10 +10,14 @@ export async function POST(request: NextRequest) {
       try {
         const payload = verifyAccessToken(accessToken);
         
-        // Delete all sessions for this user
-        await prisma.session.deleteMany({
-          where: { userId: payload.userId },
-        });
+        // Check if payload is not null before using it
+        if (payload) {
+          // Delete all sessions for this user
+          // Using 'id' instead of 'userId' to match the JWT payload structure
+          await prisma.session.deleteMany({
+            where: { userId: payload.id },
+          });
+        }
         
       } catch (error) {
         // Token might be expired, but we still want to clear cookies
