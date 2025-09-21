@@ -7,12 +7,9 @@ import crypto from 'crypto';
 export async function createSession(
   userId: string,
   token: string,
-  refreshToken: string,
-  userAgent?: string,
-  ipAddress?: string
+  refreshToken: string
 ) {
   // Calculate expiration times
-  const accessTokenExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
   const refreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
   // Create session in database
@@ -21,8 +18,6 @@ export async function createSession(
       userId,
       token,
       refreshToken,
-      userAgent,
-      ipAddress,
       expiresAt: refreshTokenExpiry,
     },
   });
@@ -87,8 +82,7 @@ export async function refreshSession(refreshToken: string) {
     data: {
       token: newToken,
       refreshToken: newRefreshToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      updatedAt: new Date(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     },
     include: { user: true },
   });
