@@ -34,6 +34,7 @@ model User {
   activities        Activity[]
   insights          AIInsight[]
   sessions          Session[]
+  subscription      Subscription?
 }
 
 // Session model for auth
@@ -47,6 +48,24 @@ model Session {
   
   // Relations
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Subscription model - NEW
+model Subscription {
+  id                   String    @id @default(uuid())
+  userId               String    @unique
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  plan                 String    @default("STARTER")
+  status               String    @default("INACTIVE")
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  
+  // Relations
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // ICP (Ideal Customer Profile)
@@ -100,7 +119,7 @@ model Prospect {
   @@index([userId, email])
 }
 
-// Email Template model - NEW
+// Email Template model
 model EmailTemplate {
   id            String    @id @default(uuid())
   userId        String
