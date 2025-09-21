@@ -1,0 +1,16 @@
+# Ignore everything except apps/web
+packages/
+apps/api/
+docs/
+scripts/
+node_modules/
+.github/
+.turbo/
+turbo.json
+turbo.json.disabled
+pnpm-workspace.yaml
+lerna.json
+rush.json
+.git/
+*.md
+!apps/web/README.md

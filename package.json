@@ -1,33 +1,9 @@
 {
-  "name": "ai-sales-agent",
+  "name": "ai-sales-agent-root",
   "version": "1.0.0",
   "private": true,
-  "description": "AI-powered B2B prospecting SaaS platform",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "description": "Root package - DO NOT USE FOR BUILD",
   "scripts": {
-    "build": "turbo run build",
-    "build:web": "cd apps/web && npm run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "test": "turbo run test",
-    "typecheck": "turbo run typecheck",
-    "clean": "turbo run clean",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "vercel-build": "npm run build:web"
-  },
-  "devDependencies": {
-    "@turbo/gen": "^1.10.12",
-    "@types/node": "^20.5.2",
-    "eslint": "^8.48.0",
-    "prettier": "^3.0.0",
-    "turbo": "^1.10.12",
-    "typescript": "^5.2.2"
-  },
-  "packageManager": "npm@10.0.0",
-  "engines": {
-    "node": ">=20.0.0"
+    "info": "echo 'Please build from apps/web directory'"
   }
 }
