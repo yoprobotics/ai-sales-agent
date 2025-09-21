@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx prisma generate && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "npx prisma generate || echo 'Skipping prisma generate in postinstall'"
+    "prisma:generate": "npx prisma generate"
   },
   "dependencies": {
     "next": "14.2.32",
