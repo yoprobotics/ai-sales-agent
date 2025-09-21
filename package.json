@@ -4,13 +4,13 @@
   "private": true,
   "description": "AI-powered B2B prospecting SaaS platform",
   "scripts": {
-    "build:web": "cd apps/web && npm install && npm run build",
+    "build:web": "./vercel-build.sh",
     "dev": "cd apps/web && npm run dev",
     "lint": "cd apps/web && npm run lint",
     "test": "cd apps/web && npm run test",
     "typecheck": "cd apps/web && npm run typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "vercel-build": "npm run build:web"
+    "vercel-build": "bash vercel-build.sh"
   },
   "devDependencies": {
     "@types/node": "^20.5.2",
