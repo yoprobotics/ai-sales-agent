@@ -1,48 +1,61 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createBillingPortalSession } from '@/lib/stripe';
-import { verifyAuth } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { NextRequest, NextResponse } from 'next/server'
+import { verifyToken } from '@/lib/jwt'
+import { stripeService } from '@/lib/stripe'
+import { prisma } from '@/lib/prisma'
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
     // Verify authentication
-    const authResult = await verifyAuth(request);
-    if (!authResult.authenticated) {
+    const token = req.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) {
       return NextResponse.json(
-        { error: 'Authentication required' },
+        { error: 'Unauthorized' },
         { status: 401 }
-      );
+      )
     }
 
-    const userId = authResult.userId;
-
-    // Get user subscription
-    const subscription = await prisma.subscription.findUnique({
-      where: { userId },
-    });
-
-    if (!subscription || !subscription.stripeCustomerId) {
+    const payload = await verifyToken(token)
+    if (!payload) {
       return NextResponse.json(
-        { error: 'No subscription found. Please subscribe to a plan first.' },
-        { status: 404 }
-      );
+        { error: 'Invalid token' },
+        { status: 401 }
+      )
     }
 
-    // Create billing portal session
-    const baseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
-    const session = await createBillingPortalSession(
-      subscription.stripeCustomerId,
-      `${baseUrl}/dashboard/billing`
-    );
+    // Get user's subscription
+    const subscription = await prisma.subscription.findFirst({
+      where: { userId: payload.userId },
+      select: { stripeCustomerId: true }
+    })
 
-    return NextResponse.json({
-      url: session.url,
-    });
-  } catch (error: any) {
-    console.error('Error creating billing portal session:', error);
+    if (!subscription?.stripeCustomerId) {
+      return NextResponse.json(
+        { error: 'No subscription found' },
+        { status: 404 }
+      )
+    }
+
+    const { returnUrl } = await req.json()
+    
+    // Create portal session
+    const session = await stripeService.createBillingPortalSession(
+      subscription.stripeCustomerId,
+      returnUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing`
+    )
+
+    return NextResponse.json({ url: session.url })
+  } catch (error) {
+    console.error('Stripe portal error:', error)
     return NextResponse.json(
-      { error: 'Failed to create billing portal session', details: error.message },
+      { error: 'Failed to create portal session' },
       { status: 500 }
-    );
+    )
   }
+}
+
+export async function GET() {
+  return NextResponse.json({
+    message: 'Stripe customer portal endpoint',
+    status: 'ready'
+  })
 }
