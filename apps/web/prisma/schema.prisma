@@ -29,6 +29,7 @@ model User {
   icps              ICP[]
   prospects         Prospect[]
   emailSequences    EmailSequence[]
+  emailTemplates    EmailTemplate[]
   campaigns         Campaign[]
   activities        Activity[]
   insights          AIInsight[]
@@ -97,6 +98,27 @@ model Prospect {
   activities      Activity[]
   
   @@index([userId, email])
+}
+
+// Email Template model - NEW
+model EmailTemplate {
+  id            String    @id @default(uuid())
+  userId        String
+  name          String
+  subject       String
+  content       String    @db.Text
+  type          String    @default("CUSTOM") // CUSTOM, INTRO, FOLLOW_UP, etc.
+  language      String    @default("en")
+  isActive      Boolean   @default(true)
+  usageCount    Int       @default(0)
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, type])
 }
 
 // Email Sequence
