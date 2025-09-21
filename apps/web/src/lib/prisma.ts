@@ -1,9 +1,28 @@
-import { PrismaClient } from '@prisma/client';
+// Prisma client singleton - with graceful fallback
+import type { PrismaClient as PrismaClientType } from '@prisma/client';
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
+let prisma: PrismaClientType | null = null;
 
-export const prisma = globalForPrisma.prisma || new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-});
+// Only initialize Prisma if DATABASE_URL is set
+if (process.env.DATABASE_URL) {
+  try {
+    const { PrismaClient } = require('@prisma/client');
+    const globalForPrisma = globalThis as unknown as {
+      prisma: PrismaClientType | undefined;
+    };
+    
+    prisma = globalForPrisma.prisma ?? new PrismaClient({
+      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    });
+    
+    if (process.env.NODE_ENV !== 'production') {
+      globalForPrisma.prisma = prisma as PrismaClientType;
+    }
+  } catch (error) {
+    console.warn('Prisma client could not be initialized:', error);
+  }
+} else {
+  console.info('DATABASE_URL not set, database features disabled');
+}
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+export { prisma };
