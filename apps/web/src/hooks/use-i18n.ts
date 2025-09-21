@@ -1,2 +1,2 @@
-// Re-export from use-i18n.tsx without extension to avoid TypeScript errors
-export * from './use-i18n';
+// This file should not be used - please import from use-i18n.tsx directly
+// Kept for backwards compatibility only
