@@ -1,5 +1,5 @@
 {
-  "name": "ai-sales-agent-root",
+  "name": "ai-sales-agent",
   "version": "1.0.0",
   "private": true,
   "description": "AI-powered B2B prospecting SaaS platform",
@@ -8,33 +8,39 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev:web",
-    "dev:web": "cd apps/web && npm run dev",
-    "dev:api": "cd apps/api && npm run dev",
-    "build": "npm run build:web",
-    "build:web": "cd apps/web && npm run build",
-    "build:api": "cd apps/api && npm run build",
-    "start:web": "cd apps/web && npm start",
-    "start:api": "cd apps/api && npm start",
-    "lint": "eslint . --ext .ts,.tsx",
-    "typecheck": "tsc --noEmit",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "clean": "rm -rf node_modules **/node_modules **/dist **/.next **/.turbo",
-    "setup": "npm install && cd apps/web && npm install && cd ../.. && cd packages/core && npm install",
-    "db:generate": "cd apps/web && npx prisma generate",
-    "db:push": "cd apps/web && npx prisma db push",
-    "db:migrate": "cd apps/web && npx prisma migrate dev",
-    "db:studio": "cd apps/web && npx prisma studio",
-    "db:seed": "cd apps/web && npx tsx prisma/seed.ts"
-  },
-  "devDependencies": {
-    "@types/node": "^20.5.2",
-    "eslint": "^8.48.0",
-    "prettier": "^3.0.0",
-    "typescript": "^5.2.2"
+    "dev": "cd apps/web && npm run dev",
+    "build": "cd apps/web && npm run build",
+    "start": "cd apps/web && npm run start",
+    "lint": "cd apps/web && npm run lint",
+    "typecheck": "cd apps/web && npm run typecheck",
+    "db:generate": "cd apps/web && npm run db:generate",
+    "db:push": "cd apps/web && npm run db:push",
+    "db:migrate": "cd apps/web && npm run db:migrate",
+    "db:studio": "cd apps/web && npm run db:studio",
+    "verify": "bash scripts/verify-deployment.sh"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
-  }
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yoprobotics/ai-sales-agent.git"
+  },
+  "keywords": [
+    "saas",
+    "b2b",
+    "sales",
+    "prospecting",
+    "ai",
+    "crm",
+    "nextjs",
+    "typescript"
+  ],
+  "author": "YoProbotics <yoprobotics@gmail.com>",
+  "license": "PROPRIETARY",
+  "bugs": {
+    "url": "https://github.com/yoprobotics/ai-sales-agent/issues"
+  },
+  "homepage": "https://github.com/yoprobotics/ai-sales-agent#readme"
 }
