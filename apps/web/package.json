@@ -37,6 +37,7 @@
     "jose": "^5.9.6",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.475.0",
+    "lru-cache": "^10.2.0",
     "react-hook-form": "^7.54.2",
     "react-hot-toast": "^2.5.0",
     "sonner": "^1.7.2",
