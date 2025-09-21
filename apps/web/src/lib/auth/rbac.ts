@@ -106,8 +106,9 @@ export function canPerformAction(
     case 'icp':
     case 'sequence':
     case 'campaign':
-      // All roles except admin can manage business resources
-      return role !== 'ADMIN' || action === 'read';
+      // All non-admin roles can manage business resources
+      // Since we already checked for ADMIN above, all roles here can manage these resources
+      return true;
       
     default:
       return false;
