@@ -4,6 +4,9 @@ import prisma from '@/lib/prisma';
 import type { Stripe } from 'stripe';
 import { getPlanFromPriceId, PLAN_FEATURES } from '@/lib/stripe';
 
+// Type helper for plan names
+type PlanType = 'STARTER' | 'PRO' | 'BUSINESS';
+
 // Disable body parsing, we need raw body for Stripe webhook signature verification
 export const runtime = 'nodejs';
 
@@ -167,7 +170,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
 
   // Get plan from price ID
   const priceId = subscription.items.data[0]?.price.id;
-  const plan = getPlanFromPriceId(priceId) || 'STARTER';
+  const plan = (getPlanFromPriceId(priceId) || 'STARTER') as PlanType;
 
   // Update user plan
   await prisma.user.update({
@@ -229,7 +232,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 
   // Get plan from price ID
   const priceId = subscription.items.data[0]?.price.id;
-  const plan = getPlanFromPriceId(priceId) || 'STARTER';
+  const plan = (getPlanFromPriceId(priceId) || 'STARTER') as PlanType;
 
   // Update subscription
   await prisma.subscription.update({
