@@ -30,10 +30,13 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.create({
       data: {
         email: validatedData.email,
-        passwordHash: hashedPassword,
+        hashedPassword: hashedPassword,
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
         companyName: validatedData.companyName,
+        language: validatedData.language || 'en',
+        dataRegion: validatedData.dataRegion || 'EU',
+        timezone: validatedData.timezone || 'UTC',
       },
       select: {
         id: true,
@@ -41,7 +44,8 @@ export async function POST(request: NextRequest) {
         firstName: true,
         lastName: true,
         role: true,
-        plan: true,
+        language: true,
+        dataRegion: true,
       },
     });
     
@@ -49,12 +53,13 @@ export async function POST(request: NextRequest) {
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
     
-    // Update user with refresh token
-    await prisma.user.update({
-      where: { id: user.id },
+    // Create session with tokens
+    await prisma.session.create({
       data: {
+        userId: user.id,
+        token: accessToken,
         refreshToken,
-        refreshTokenExp: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       },
     });
     
