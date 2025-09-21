@@ -1,10 +1,11 @@
-# 🚀 AI Sales Agent - B2B Prospecting SaaS Platform
+# AI Sales Agent 🚀
 
-> AI-powered B2B prospecting platform with intelligent qualification, personalized messaging, and CRM pipeline management
+> AI-powered B2B prospecting SaaS platform with intelligent qualification, personalized messaging, and CRM pipeline management
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fyoprobotics%2Fai-sales-agent)
+[![CI Status](https://github.com/yoprobotics/ai-sales-agent/workflows/CI/badge.svg)](https://github.com/yoprobotics/ai-sales-agent/actions)
+[![Deploy Status](https://img.shields.io/badge/deploy-vercel-black)](https://ai-sales-agent.vercel.app)
 [![License](https://img.shields.io/badge/license-Proprietary-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-0.1.0-green.svg)](package.json)
 
 ## ✨ Features
 
@@ -38,30 +39,14 @@
 - **Recommendation Engine**: AI-powered improvement suggestions
 - **Custom Reports**: Generate insights tailored to your needs
 
-### 🌍 Enterprise-Ready
-- **GDPR/PIPEDA/CCPA Compliant**: Full regulatory compliance
-- **Multi-Region Data**: Choose US, EU, or Canadian data centers
-- **Enterprise Security**: Encryption, audit logs, access controls
-- **Team Collaboration**: Multi-user workspaces (coming soon)
-
-## 🏗 Tech Stack
-
-- **Frontend**: Next.js 14 + TypeScript + Tailwind CSS
-- **Backend**: Next.js API Routes + Serverless Functions
-- **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: JWT with secure cookie rotation
-- **Payments**: Stripe for subscription management
-- **Email**: SendGrid for transactional emails
-- **AI**: OpenAI GPT-4 for intelligent processing
-- **Deployment**: Vercel with automated CI/CD
-
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ 
-- PostgreSQL database
-- npm or yarn
+- **Node.js** 20+ (required by Vercel)
+- **PostgreSQL** database (local or cloud)
+- **npm** package manager
+- **Git** for version control
 
 ### 1. Clone the Repository
 
@@ -73,73 +58,136 @@ cd ai-sales-agent
 ### 2. Install Dependencies
 
 ```bash
-cd apps/web
 npm install
+cd apps/web && npm install
 ```
 
 ### 3. Environment Setup
 
 ```bash
+cd apps/web
 cp .env.example .env.local
 ```
 
-Configure your environment variables:
+Edit `.env.local` with your configuration:
 
 ```env
-# Database
+# Database (Required)
 DATABASE_URL=postgresql://username:password@localhost:5432/ai_sales_agent
 
-# Authentication
-JWT_SECRET=your-super-secret-jwt-key
-JWT_REFRESH_SECRET=your-super-secret-refresh-key
+# Authentication (Required)
+JWT_SECRET=your-super-secret-jwt-key-min-32-chars
 
-# Stripe
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_PUBLISHABLE_KEY=pk_test_...
-
-# SendGrid
-SENDGRID_API_KEY=SG...
-SENDGRID_FROM_EMAIL=noreply@yourdomain.com
-
-# OpenAI
-OPENAI_API_KEY=sk-...
-
-# App
+# Application (Required)
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 ### 4. Database Setup
 
 ```bash
+# Generate Prisma client
+cd apps/web
 npx prisma generate
+
+# Run database migrations
 npx prisma migrate dev
+
+# Seed initial data (optional)
 npx prisma db seed
 ```
 
 ### 5. Start Development Server
 
 ```bash
+cd apps/web
 npm run dev
 ```
 
 The application will be available at http://localhost:3000
 
-## 📦 Deployment
+## 🛠 Development
 
-### Deploy to Vercel
-
-1. Click the "Deploy with Vercel" button above
-2. Configure environment variables in Vercel dashboard
-3. Deploy!
-
-### Manual Deployment
+### Available Scripts
 
 ```bash
-npm run build
-npm start
+# Development
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run start        # Start production server
+
+# Database
+npx prisma generate  # Generate Prisma client
+npx prisma migrate dev # Run migrations
+npx prisma studio    # Open Prisma Studio
+
+# Code Quality
+npm run lint         # Run ESLint
+npx tsc --noEmit     # Type checking
 ```
 
-## 💰 Subscription Plans
+### Project Structure
+
+```
+ai-sales-agent/
+├── apps/
+│   └── web/                 # Next.js frontend application
+│       ├── src/
+│       │   ├── app/         # App Router pages
+│       │   ├── components/  # React components
+│       │   ├── lib/         # Utilities and helpers
+│       │   └── styles/      # Global styles
+│       ├── prisma/          # Database schema
+│       └── public/          # Static assets
+├── packages/                # Shared packages (future)
+├── docs/                    # Documentation
+└── .github/workflows/       # CI/CD pipelines
+```
+
+## 📦 Deployment
+
+### Vercel Deployment (Recommended)
+
+1. **Fork/Clone this repository**
+2. **Connect to Vercel**: Import your GitHub repository
+3. **Configure environment variables** in Vercel Dashboard
+4. **Deploy**: Push to main branch for automatic deployment
+
+### Required Environment Variables for Production
+
+```env
+DATABASE_URL=postgresql://...
+JWT_SECRET=production-jwt-secret-min-32-chars
+NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
+```
+
+## 🔧 Troubleshooting
+
+### Build Errors
+
+If you encounter build errors:
+
+1. **Ensure Prisma client is generated**:
+   ```bash
+   cd apps/web && npx prisma generate
+   ```
+
+2. **Check environment variables**:
+   - DATABASE_URL must be valid PostgreSQL connection string
+   - JWT_SECRET must be at least 32 characters
+
+3. **Clear caches**:
+   ```bash
+   rm -rf .next node_modules
+   npm install
+   ```
+
+### 404 Errors on Vercel
+
+- Ensure `vercel.json` is properly configured
+- Check that outputDirectory points to `apps/web/.next`
+- Verify framework is set to `nextjs`
+
+## 💰 Subscription Plans (Coming Soon)
 
 ### 🚀 Starter Plan ($49-99/month)
 - 1 ICP (Ideal Customer Profile)
@@ -161,56 +209,31 @@ npm start
 - Custom branding
 - Dedicated support
 
-## 🌐 Supported Markets
+## 🤝 Contributing
 
-- 🇨🇦 **Canada** (PIPEDA compliant)
-- 🇺🇸 **United States** (CCPA compliant)
-- 🇪🇺 **European Union** (GDPR compliant)
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-## 🔒 Security & Compliance
+### Development Setup
 
-- **Encryption**: AES-256 encryption for sensitive data
-- **Authentication**: JWT with secure rotation
-- **Rate Limiting**: API protection against abuse
-- **GDPR**: Right to be forgotten, data portability
-- **PIPEDA**: Canadian privacy requirements
-- **CCPA**: California consumer privacy rights
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes and add tests
+4. Commit your changes: `git commit -m 'Add amazing feature'`
+5. Push to your branch: `git push origin feature/amazing-feature`
+6. Open a Pull Request
 
 ## 📚 Documentation
 
-- [Architecture Guide](./docs/ARCHITECTURE.md)
-- [API Documentation](./docs/API.md)
-- [Privacy Policy](./docs/PRIVACY.md)
-- [Terms & Conditions](./docs/TERMS.md)
+- [📖 Architecture Guide](./docs/ARCHITECTURE.md)
+- [🔒 Security Overview](./docs/SECURITY.md)
+- [📋 API Documentation](./docs/API.md)
+- [🌍 Internationalization](./docs/I18N.md)
 
 ## 🆘 Support
 
-- **Email**: support@aisalesagent.com
-- **Documentation**: [docs.aisalesagent.com](https://docs.aisalesagent.com)
-- **GitHub Issues**: [Report bugs](https://github.com/yoprobotics/ai-sales-agent/issues)
-
-## 🔮 Roadmap
-
-### Q1 2025 ✅
-- MVP Release
-- Core features
-- GDPR/PIPEDA/CCPA compliance
-
-### Q2 2025 🔄
-- Team collaboration
-- CRM integrations (HubSpot, Salesforce)
-- Advanced AI insights
-- Mobile application
-
-### Q3 2025 📅
-- Multi-channel sequences
-- Advanced reporting
-- API for integrations
-- White-label solutions
-
-## 💼 About YoProbotics
-
-AI Sales Agent is built by [YoProbotics](https://yoprobotics.com), a team passionate about using AI to enhance human productivity in sales and marketing.
+### Community Support
+- [GitHub Issues](https://github.com/yoprobotics/ai-sales-agent/issues)
+- [GitHub Discussions](https://github.com/yoprobotics/ai-sales-agent/discussions)
 
 ## 📝 License
 
@@ -219,6 +242,10 @@ This project is proprietary software. All rights reserved.
 ---
 
 <div align="center">
+
+**[Live Demo](https://ai-sales-agent.vercel.app)** • 
+**[Documentation](https://github.com/yoprobotics/ai-sales-agent/tree/main/docs)** • 
+**[Report Bug](https://github.com/yoprobotics/ai-sales-agent/issues)**
 
 Made with ❤️ by the YoProbotics team
 

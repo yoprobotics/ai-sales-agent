@@ -22,6 +22,9 @@ ls -la node_modules/tailwindcss > /dev/null 2>&1 && echo "✅ Tailwind CSS insta
 echo "🎯 Generating Prisma Client..."
 npx prisma generate
 
+echo "🔍 Running type check..."
+npx tsc --noEmit || echo "⚠️ Type errors found but continuing build"
+
 echo "🏗️ Building Next.js application..."
 npm run build
 
