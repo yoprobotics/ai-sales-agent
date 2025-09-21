@@ -16,36 +16,45 @@ export async function POST(request: NextRequest) {
     // Verify refresh token
     const payload = verifyRefreshToken(refreshToken);
     
-    // Find user and verify stored refresh token
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
+    // Find session with refresh token
+    const session = await prisma.session.findUnique({
+      where: { refreshToken },
+      include: { user: true },
     });
     
-    if (!user || user.refreshToken !== refreshToken) {
+    if (!session || session.userId !== payload.userId) {
       return NextResponse.json(
         { error: 'Invalid refresh token' },
         { status: 401 }
       );
     }
     
-    // Check if refresh token is expired
-    if (user.refreshTokenExp && user.refreshTokenExp < new Date()) {
+    // Check if session is expired
+    if (session.expiresAt < new Date()) {
+      // Delete expired session
+      await prisma.session.delete({
+        where: { id: session.id },
+      });
+      
       return NextResponse.json(
         { error: 'Refresh token expired' },
         { status: 401 }
       );
     }
     
+    const user = session.user;
+    
     // Generate new tokens
     const newAccessToken = generateAccessToken(user);
     const newRefreshToken = generateRefreshToken(user);
     
-    // Update user with new refresh token
-    await prisma.user.update({
-      where: { id: user.id },
+    // Update session with new tokens
+    await prisma.session.update({
+      where: { id: session.id },
       data: {
+        token: newAccessToken,
         refreshToken: newRefreshToken,
-        refreshTokenExp: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       },
     });
     
@@ -60,7 +69,9 @@ export async function POST(request: NextRequest) {
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
-        plan: user.plan,
+        companyName: user.companyName,
+        language: user.language,
+        dataRegion: user.dataRegion,
       },
     });
   } catch (error) {
