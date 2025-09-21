@@ -1,5 +1,6 @@
 {
-  "installCommand": "npm install && npm list prisma",
-  "buildCommand": "cd apps/web && npm install && npx prisma generate && npm run build",
-  "outputDirectory": "apps/web/.next"
+  "installCommand": "npm install",
+  "buildCommand": "chmod +x build.sh && ./build.sh",
+  "outputDirectory": "apps/web/.next",
+  "framework": null
 }
