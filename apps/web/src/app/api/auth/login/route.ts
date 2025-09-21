@@ -23,8 +23,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Verify password
-    const isValid = await verifyPassword(validatedData.password, user.passwordHash);
+    // Verify password - FIX: Changed passwordHash to hashedPassword
+    const isValid = await verifyPassword(validatedData.password, user.hashedPassword);
     
     if (!isValid) {
       return NextResponse.json(
