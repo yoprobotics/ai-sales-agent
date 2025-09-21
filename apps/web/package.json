@@ -1,57 +1,24 @@
 {
-  "name": "@ai-sales-agent/web",
+  "name": "ai-sales-agent-web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "bash scripts/vercel-build.sh || npm run build:fallback",
-    "build:fallback": "next build",
-    "build:local": "prisma generate && next build",
+    "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "clean": "rm -rf .next node_modules/.prisma",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
-    "db:migrate:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "lint": "next lint"
   },
   "dependencies": {
-    "@prisma/client": "^5.12.1",
-    "@radix-ui/react-alert-dialog": "^1.0.5",
-    "@radix-ui/react-dialog": "^1.0.5",
-    "@radix-ui/react-dropdown-menu": "^2.0.6",
-    "@radix-ui/react-label": "^2.0.2",
-    "@radix-ui/react-slot": "^1.0.2",
-    "@radix-ui/react-toast": "^1.1.5",
-    "@sendgrid/mail": "^8.1.0",
-    "bcryptjs": "^2.4.3",
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.1.0",
-    "jose": "^5.2.3",
-    "lucide-react": "^0.363.0",
-    "marked": "^9.1.5",
     "next": "14.2.32",
-    "prisma": "^5.12.1",
     "react": "^18",
-    "react-dom": "^18",
-    "stripe": "^14.14.0",
-    "tailwind-merge": "^2.2.2",
-    "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.22.4"
+    "react-dom": "^18"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/marked": "^5.0.2",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "autoprefixer": "^10.4.16",
     "eslint": "^8",
     "eslint-config-next": "14.2.32",
-    "postcss": "^8.4.32",
-    "tailwindcss": "^3.3.0",
     "typescript": "^5"
   }
 }
