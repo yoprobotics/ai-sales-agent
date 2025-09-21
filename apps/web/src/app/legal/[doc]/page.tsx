@@ -20,9 +20,16 @@ function convertMarkdownToHTML(markdown: string): string {
   // Links
   html = html.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" class="text-blue-600 hover:underline">$1</a>')
   
-  // Lists
+  // Lists - Fixed to avoid using /s flag
   html = html.replace(/^\* (.+)$/gim, '<li>$1</li>')
-  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+  // Instead of using /s flag, match list items more specifically
+  html = html.replace(/(<li>[\s\S]*?<\/li>)/g, (match) => {
+    // Wrap consecutive list items in ul tags
+    if (match.includes('<li>')) {
+      return '<ul>' + match + '</ul>'
+    }
+    return match
+  })
   
   // Line breaks
   html = html.replace(/\n\n/g, '</p><p>')
