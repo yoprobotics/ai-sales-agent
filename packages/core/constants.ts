@@ -1,1 +1,129 @@
-// Application constants and configuration\n\n// Subscription plans and limits\nexport const SUBSCRIPTION_PLANS = {\n  STARTER: {\n    name: 'Starter',\n    price: {\n      monthly: 49,\n      yearly: 490, // ~17% discount\n    },\n    limits: {\n      icps: 1,\n      prospects: 200,\n      sequences: 1,\n      messages: 1000,\n      teamMembers: 1,\n    },\n    features: {\n      basicAI: true,\n      emailSequences: true,\n      basicReports: true,\n      emailSupport: true,\n      multiChannel: false,\n      apiAccess: false,\n      customIntegrations: false,\n      advancedAI: false,\n    },\n  },\n  PRO: {\n    name: 'Pro',\n    price: {\n      monthly: 149,\n      yearly: 1490, // ~17% discount\n    },\n    limits: {\n      icps: 5,\n      prospects: 2000,\n      sequences: 10,\n      messages: 10000,\n      teamMembers: 3,\n    },\n    features: {\n      basicAI: true,\n      emailSequences: true,\n      basicReports: true,\n      emailSupport: true,\n      multiChannel: true,\n      apiAccess: true,\n      customIntegrations: false,\n      advancedAI: true,\n      keywordWatching: true,\n      prioritySupport: true,\n    },\n  },\n  BUSINESS: {\n    name: 'Business',\n    price: {\n      monthly: 499,\n      yearly: 4990, // ~17% discount\n    },\n    limits: {\n      icps: -1, // unlimited\n      prospects: -1, // unlimited\n      sequences: -1, // unlimited\n      messages: -1, // unlimited\n      teamMembers: 10,\n    },\n    features: {\n      basicAI: true,\n      emailSequences: true,\n      basicReports: true,\n      emailSupport: true,\n      multiChannel: true,\n      apiAccess: true,\n      customIntegrations: true,\n      advancedAI: true,\n      keywordWatching: true,\n      prioritySupport: true,\n      crmIntegrations: true,\n      predictiveAnalytics: true,\n      customBranding: true,\n      dedicatedSupport: true,\n    },\n  },\n} as const;\n\n// Scoring weights for prospect qualification\nexport const SCORING_WEIGHTS = {\n  BUDGET: 0.25,\n  AUTHORITY: 0.20,\n  NEED: 0.25,\n  TIMING: 0.15,\n  SIGNALS: 0.15,\n} as const;\n\n// Default scoring thresholds\nexport const SCORE_THRESHOLDS = {\n  HIGH: 80,\n  MEDIUM: 60,\n  LOW: 40,\n} as const;\n\n// Rate limiting configuration\nexport const RATE_LIMITS = {\n  LOGIN_ATTEMPTS: {\n    windowMs: 15 * 60 * 1000, // 15 minutes\n    maxAttempts: 5,\n  },\n  API_REQUESTS: {\n    windowMs: 15 * 60 * 1000, // 15 minutes\n    maxRequests: 100,\n  },\n  PASSWORD_RESET: {\n    windowMs: 60 * 60 * 1000, // 1 hour\n    maxAttempts: 3,\n  },\n  EMAIL_SENDING: {\n    windowMs: 60 * 60 * 1000, // 1 hour\n    maxEmails: 50, // per user\n  },\n} as const;\n\n// Security configuration\nexport const SECURITY = {\n  JWT_EXPIRES_IN: '15m',\n  JWT_REFRESH_EXPIRES_IN: '7d',\n  PASSWORD_MIN_LENGTH: 8,\n  PASSWORD_HASH_ROUNDS: 12,\n  SESSION_TIMEOUT: 24 * 60 * 60 * 1000, // 24 hours\n  MAX_LOGIN_ATTEMPTS: 5,\n  LOCKOUT_DURATION: 30 * 60 * 1000, // 30 minutes\n} as const;\n\n// Email configuration\nexport const EMAIL_CONFIG = {\n  VERIFICATION_EXPIRES: 24 * 60 * 60 * 1000, // 24 hours\n  PASSWORD_RESET_EXPIRES: 60 * 60 * 1000, // 1 hour\n  SEQUENCE_MAX_STEPS: 10,\n  SEQUENCE_MAX_DELAY_DAYS: 365,\n  DAILY_SEND_LIMIT: 500, // per user\n} as const;\n\n// File upload limits\nexport const UPLOAD_LIMITS = {\n  CSV_MAX_SIZE: 10 * 1024 * 1024, // 10MB\n  CSV_MAX_ROWS: 10000,\n  IMAGE_MAX_SIZE: 5 * 1024 * 1024, // 5MB\n  DOCUMENT_MAX_SIZE: 25 * 1024 * 1024, // 25MB\n} as const;\n\n// Data retention policies\nexport const DATA_RETENTION = {\n  LOGS_DAYS: 90,\n  BACKUPS_DAYS: 30,\n  ANALYTICS_DAYS: 365,\n  DELETED_USER_DAYS: 30, // Grace period before permanent deletion\n} as const;\n\n// API configuration\nexport const API_CONFIG = {\n  DEFAULT_PAGE_SIZE: 20,\n  MAX_PAGE_SIZE: 100,\n  DEFAULT_TIMEOUT: 30000, // 30 seconds\n  MAX_RETRIES: 3,\n} as const;\n\n// AI model configuration\nexport const AI_CONFIG = {\n  DEFAULT_MODEL: 'gpt-4',\n  FALLBACK_MODEL: 'gpt-3.5-turbo',\n  MAX_TOKENS: 4000,\n  TEMPERATURE: 0.7,\n  MAX_RETRIES: 2,\n  TIMEOUT: 60000, // 60 seconds\n} as const;\n\n// Internationalization\nexport const SUPPORTED_LANGUAGES = ['en', 'fr'] as const;\nexport const DEFAULT_LANGUAGE = 'en' as const;\nexport const SUPPORTED_TIMEZONES = [\n  'UTC',\n  'America/New_York',\n  'America/Chicago',\n  'America/Denver',\n  'America/Los_Angeles',\n  'America/Toronto',\n  'America/Montreal',\n  'Europe/London',\n  'Europe/Paris',\n  'Europe/Berlin',\n  'Europe/Rome',\n  'Europe/Madrid',\n] as const;\n\n// Data regions for compliance\nexport const DATA_REGIONS = {\n  US: {\n    name: 'United States',\n    code: 'US',\n    regulations: ['CCPA'],\n    defaultTimezone: 'America/New_York',\n  },\n  EU: {\n    name: 'European Union',\n    code: 'EU',\n    regulations: ['GDPR'],\n    defaultTimezone: 'Europe/Paris',\n  },\n  CA: {\n    name: 'Canada',\n    code: 'CA',\n    regulations: ['PIPEDA'],\n    defaultTimezone: 'America/Toronto',\n  },\n} as const;\n\n// Industry categories for ICP\nexport const INDUSTRIES = [\n  'Technology',\n  'Healthcare',\n  'Finance',\n  'Education',\n  'Retail',\n  'Manufacturing',\n  'Real Estate',\n  'Consulting',\n  'Marketing',\n  'Legal',\n  'Non-profit',\n  'Government',\n  'Energy',\n  'Transportation',\n  'Media',\n  'Food & Beverage',\n  'Hospitality',\n  'Construction',\n  'Agriculture',\n  'Other',\n] as const;\n\n// Company size categories\nexport const COMPANY_SIZES = {\n  startup: { name: 'Startup', employees: '1-10' },\n  small: { name: 'Small', employees: '11-50' },\n  medium: { name: 'Medium', employees: '51-200' },\n  large: { name: 'Large', employees: '201-1000' },\n  enterprise: { name: 'Enterprise', employees: '1000+' },\n} as const;\n\n// Revenue ranges\nexport const REVENUE_RANGES = {\n  under_1m: { name: 'Under $1M', value: 'under_1m' },\n  '1m_10m': { name: '$1M - $10M', value: '1m_10m' },\n  '10m_50m': { name: '$10M - $50M', value: '10m_50m' },\n  '50m_100m': { name: '$50M - $100M', value: '50m_100m' },\n  over_100m: { name: 'Over $100M', value: 'over_100m' },\n} as const;\n\n// Application URLs\nexport const APP_URLS = {\n  PRODUCTION: 'https://app.aisalesagent.com',\n  STAGING: 'https://staging.aisalesagent.com',\n  DEVELOPMENT: 'http://localhost:3000',\n} as const;\n\n// Feature flags\nexport const FEATURE_FLAGS = {\n  MULTI_LANGUAGE: true,\n  AI_INSIGHTS: true,\n  ADVANCED_SEQUENCES: true,\n  CRM_INTEGRATIONS: false, // Coming in V2\n  TEAM_COLLABORATION: false, // Coming in V2\n  MOBILE_APP: false, // Coming in V3\n} as const;\n
+// Application constants and configuration
+
+// Subscription plans and limits
+export const SUBSCRIPTION_PLANS = {
+  STARTER: {
+    name: 'Starter',
+    price: {
+      monthly: 49,
+      yearly: 490,
+    },
+    limits: {
+      icps: 1,
+      prospects: 200,
+      sequences: 1,
+      messages: 1000,
+      teamMembers: 1,
+    },
+  },
+  PRO: {
+    name: 'Pro',
+    price: {
+      monthly: 149,
+      yearly: 1490,
+    },
+    limits: {
+      icps: 5,
+      prospects: 2000,
+      sequences: 10,
+      messages: 10000,
+      teamMembers: 3,
+    },
+  },
+  BUSINESS: {
+    name: 'Business',
+    price: {
+      monthly: 499,
+      yearly: 4990,
+    },
+    limits: {
+      icps: -1, // unlimited
+      prospects: -1,
+      sequences: -1,
+      messages: -1,
+      teamMembers: 10,
+    },
+  },
+} as const;
+
+// Scoring weights for prospect qualification
+export const SCORING_WEIGHTS = {
+  BUDGET: 0.25,
+  AUTHORITY: 0.20,
+  NEED: 0.25,
+  TIMING: 0.15,
+  SIGNALS: 0.15,
+} as const;
+
+// Industries
+export const INDUSTRIES = [
+  'Technology',
+  'Healthcare',
+  'Finance',
+  'Education',
+  'Retail',
+  'Manufacturing',
+  'Real Estate',
+  'Consulting',
+  'Marketing',
+  'Legal',
+  'Non-profit',
+  'Government',
+  'Energy',
+  'Transportation',
+  'Media',
+  'Food & Beverage',
+  'Hospitality',
+  'Construction',
+  'Agriculture',
+  'Other',
+] as const;
+
+// Company size categories
+export const COMPANY_SIZES = {
+  startup: { name: 'Startup', employees: '1-10' },
+  small: { name: 'Small', employees: '11-50' },
+  medium: { name: 'Medium', employees: '51-200' },
+  large: { name: 'Large', employees: '201-1000' },
+  enterprise: { name: 'Enterprise', employees: '1000+' },
+} as const;
+
+// Revenue ranges
+export const REVENUE_RANGES = {
+  under_1m: { name: 'Under $1M', value: 'under_1m' },
+  '1m_10m': { name: '$1M - $10M', value: '1m_10m' },
+  '10m_50m': { name: '$10M - $50M', value: '10m_50m' },
+  '50m_100m': { name: '$50M - $100M', value: '50m_100m' },
+  over_100m: { name: 'Over $100M', value: 'over_100m' },
+} as const;
+
+// Rate limiting configuration
+export const RATE_LIMITS = {
+  LOGIN_ATTEMPTS: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxAttempts: 5,
+  },
+  API_REQUESTS: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 100,
+  },
+  PASSWORD_RESET: {
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxAttempts: 3,
+  },
+  EMAIL_SENDING: {
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxEmails: 50, // per user
+  },
+} as const;
+
+// Security configuration
+export const SECURITY = {
+  JWT_EXPIRES_IN: '15m',
+  JWT_REFRESH_EXPIRES_IN: '7d',
+  PASSWORD_MIN_LENGTH: 8,
+  PASSWORD_HASH_ROUNDS: 12,
+  SESSION_TIMEOUT: 24 * 60 * 60 * 1000, // 24 hours
+  MAX_LOGIN_ATTEMPTS: 5,
+  LOCKOUT_DURATION: 30 * 60 * 1000, // 30 minutes
+} as const;

@@ -38,34 +38,10 @@ export class AuthorizationError extends AppError {
   }
 }
 
-export class TokenExpiredError extends AppError {
-  constructor(message: string = 'Token has expired', details?: Record<string, any>) {
-    super(message, 401, 'TOKEN_EXPIRED', true, details);
-  }
-}
-
-export class InvalidTokenError extends AppError {
-  constructor(message: string = 'Invalid token', details?: Record<string, any>) {
-    super(message, 401, 'INVALID_TOKEN', true, details);
-  }
-}
-
 // Validation errors
 export class ValidationError extends AppError {
   constructor(message: string = 'Validation failed', details?: Record<string, any>) {
     super(message, 400, 'VALIDATION_ERROR', true, details);
-  }
-}
-
-export class InvalidInputError extends AppError {
-  constructor(message: string = 'Invalid input provided', details?: Record<string, any>) {
-    super(message, 400, 'INVALID_INPUT', true, details);
-  }
-}
-
-export class SchemaValidationError extends AppError {
-  constructor(message: string = 'Schema validation failed', details?: Record<string, any>) {
-    super(message, 400, 'SCHEMA_VALIDATION_ERROR', true, details);
   }
 }
 
@@ -82,22 +58,10 @@ export class ConflictError extends AppError {
   }
 }
 
-export class DuplicateResourceError extends AppError {
-  constructor(resource: string = 'Resource', details?: Record<string, any>) {
-    super(`${resource} already exists`, 409, 'DUPLICATE_RESOURCE', true, details);
-  }
-}
-
 // Rate limiting errors
 export class RateLimitError extends AppError {
   constructor(message: string = 'Rate limit exceeded', details?: Record<string, any>) {
     super(message, 429, 'RATE_LIMIT_EXCEEDED', true, details);
-  }
-}
-
-export class TooManyRequestsError extends AppError {
-  constructor(message: string = 'Too many requests', details?: Record<string, any>) {
-    super(message, 429, 'TOO_MANY_REQUESTS', true, details);
   }
 }
 
@@ -108,21 +72,9 @@ export class SubscriptionError extends AppError {
   }
 }
 
-export class PaymentRequiredError extends AppError {
-  constructor(message: string = 'Payment required', details?: Record<string, any>) {
-    super(message, 402, 'PAYMENT_REQUIRED', true, details);
-  }
-}
-
 export class QuotaExceededError extends AppError {
   constructor(resource: string = 'Resource', details?: Record<string, any>) {
     super(`${resource} quota exceeded`, 402, 'QUOTA_EXCEEDED', true, details);
-  }
-}
-
-export class PlanLimitError extends AppError {
-  constructor(message: string = 'Plan limit reached', details?: Record<string, any>) {
-    super(message, 402, 'PLAN_LIMIT_REACHED', true, details);
   }
 }
 
@@ -133,40 +85,10 @@ export class ExternalServiceError extends AppError {
   }
 }
 
-export class AIServiceError extends AppError {
-  constructor(message: string = 'AI service error', details?: Record<string, any>) {
-    super(message, 502, 'AI_SERVICE_ERROR', true, details);
-  }
-}
-
-export class EmailServiceError extends AppError {
-  constructor(message: string = 'Email service error', details?: Record<string, any>) {
-    super(message, 502, 'EMAIL_SERVICE_ERROR', true, details);
-  }
-}
-
-export class PaymentServiceError extends AppError {
-  constructor(message: string = 'Payment service error', details?: Record<string, any>) {
-    super(message, 502, 'PAYMENT_SERVICE_ERROR', true, details);
-  }
-}
-
 // Database errors
 export class DatabaseError extends AppError {
   constructor(message: string = 'Database error', details?: Record<string, any>) {
     super(message, 500, 'DATABASE_ERROR', false, details);
-  }
-}
-
-export class ConnectionError extends AppError {
-  constructor(message: string = 'Connection error', details?: Record<string, any>) {
-    super(message, 500, 'CONNECTION_ERROR', false, details);
-  }
-}
-
-export class TimeoutError extends AppError {
-  constructor(message: string = 'Operation timeout', details?: Record<string, any>) {
-    super(message, 504, 'TIMEOUT_ERROR', true, details);
   }
 }
 
@@ -177,34 +99,10 @@ export class FileProcessingError extends AppError {
   }
 }
 
-export class InvalidFileFormatError extends AppError {
-  constructor(message: string = 'Invalid file format', details?: Record<string, any>) {
-    super(message, 400, 'INVALID_FILE_FORMAT', true, details);
-  }
-}
-
-export class FileSizeExceededError extends AppError {
-  constructor(message: string = 'File size exceeded', details?: Record<string, any>) {
-    super(message, 413, 'FILE_SIZE_EXCEEDED', true, details);
-  }
-}
-
 // Business logic errors
 export class BusinessLogicError extends AppError {
   constructor(message: string = 'Business logic error', details?: Record<string, any>) {
     super(message, 422, 'BUSINESS_LOGIC_ERROR', true, details);
-  }
-}
-
-export class InvalidStateError extends AppError {
-  constructor(message: string = 'Invalid state', details?: Record<string, any>) {
-    super(message, 422, 'INVALID_STATE', true, details);
-  }
-}
-
-export class WorkflowError extends AppError {
-  constructor(message: string = 'Workflow error', details?: Record<string, any>) {
-    super(message, 422, 'WORKFLOW_ERROR', true, details);
   }
 }
 
@@ -253,16 +151,4 @@ export function handleError(error: unknown): AppError {
   }
   
   return new AppError('Unknown error occurred', 500, 'UNKNOWN_ERROR', false);
-}
-
-// Error response formatter
-export function formatErrorResponse(error: AppError) {
-  return {
-    success: false,
-    error: {
-      code: error.code,
-      message: error.message,
-      ...(error.details && { details: error.details }),
-    },
-  };
 }

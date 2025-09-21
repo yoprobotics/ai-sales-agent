@@ -1,1 +1,174 @@
-// Core TypeScript types for AI Sales Agent\n\nexport interface User {\n  id: string;\n  email: string;\n  firstName: string;\n  lastName: string;\n  role: UserRole;\n  plan: SubscriptionPlan;\n  companyName?: string;\n  dataRegion: DataRegion;\n  isEmailVerified: boolean;\n  language: Language;\n  timezone: string;\n  createdAt: Date;\n  updatedAt: Date;\n  lastLoginAt?: Date;\n}\n\nexport interface ICP {\n  id: string;\n  userId: string;\n  name: string;\n  description?: string;\n  criteria: ICPCriteria;\n  isActive: boolean;\n  createdAt: Date;\n  updatedAt: Date;\n}\n\nexport interface ICPCriteria {\n  industry: string[];\n  companySize: CompanySize[];\n  revenue?: RevenueRange;\n  location: string[];\n  keywords: string[];\n  exclusions?: string[];\n  jobTitles?: string[];\n  technologies?: string[];\n}\n\nexport interface Prospect {\n  id: string;\n  userId: string;\n  icpId: string;\n  email: string;\n  firstName?: string;\n  lastName?: string;\n  jobTitle?: string;\n  company: ProspectCompany;\n  linkedinUrl?: string;\n  websiteUrl?: string;\n  phone?: string;\n  notes?: string;\n  score: number;\n  scoreExplanation: ScoreExplanation;\n  stage: ProspectStage;\n  source: ProspectSource;\n  lastContactedAt?: Date;\n  nextFollowUpAt?: Date;\n  isOptedOut: boolean;\n  customFields: Record<string, any>;\n  createdAt: Date;\n  updatedAt: Date;\n}\n\nexport interface ProspectCompany {\n  name: string;\n  domain?: string;\n  industry?: string;\n  size?: CompanySize;\n  revenue?: RevenueRange;\n  location?: string;\n  description?: string;\n  employees?: number;\n  founded?: number;\n  technologies?: string[];\n}\n\nexport interface ScoreExplanation {\n  total: number;\n  breakdown: {\n    budget: number;\n    authority: number;\n    need: number;\n    timing: number;\n    signals: number;\n  };\n  reasoning: {\n    budget: string;\n    authority: string;\n    need: string;\n    timing: string;\n    signals: string;\n  };\n  confidence: number;\n}\n\nexport interface EmailSequence {\n  id: string;\n  userId: string;\n  icpId: string;\n  name: string;\n  description?: string;\n  steps: EmailSequenceStep[];\n  isActive: boolean;\n  stats: SequenceStats;\n  createdAt: Date;\n  updatedAt: Date;\n}\n\nexport interface EmailSequenceStep {\n  id: string;\n  sequenceId: string;\n  stepNumber: number;\n  subject: string;\n  content: string;\n  delayDays: number;\n  conditions?: SequenceCondition[];\n  isActive: boolean;\n}\n\nexport interface SequenceCondition {\n  type: 'opened' | 'clicked' | 'replied' | 'bounced' | 'unsubscribed';\n  action: 'continue' | 'skip' | 'stop';\n  waitDays?: number;\n}\n\nexport interface SequenceStats {\n  sent: number;\n  delivered: number;\n  opened: number;\n  clicked: number;\n  replied: number;\n  bounced: number;\n  unsubscribed: number;\n  openRate: number;\n  clickRate: number;\n  replyRate: number;\n}\n\nexport interface Campaign {\n  id: string;\n  userId: string;\n  name: string;\n  description?: string;\n  sequenceId: string;\n  prospects: string[];\n  status: CampaignStatus;\n  startedAt?: Date;\n  completedAt?: Date;\n  stats: SequenceStats;\n  createdAt: Date;\n  updatedAt: Date;\n}\n\nexport interface Message {\n  id: string;\n  userId: string;\n  prospectId: string;\n  campaignId?: string;\n  sequenceStepId?: string;\n  type: MessageType;\n  channel: MessageChannel;\n  subject?: string;\n  content: string;\n  status: MessageStatus;\n  sentAt?: Date;\n  deliveredAt?: Date;\n  openedAt?: Date;\n  clickedAt?: Date;\n  repliedAt?: Date;\n  metadata: Record<string, any>;\n  createdAt: Date;\n  updatedAt: Date;\n}\n\nexport interface Activity {\n  id: string;\n  userId: string;\n  prospectId: string;\n  type: ActivityType;\n  title: string;\n  description?: string;\n  scheduledAt?: Date;\n  completedAt?: Date;\n  reminder?: ActivityReminder;\n  metadata: Record<string, any>;\n  createdAt: Date;\n  updatedAt: Date;\n}\n\nexport interface ActivityReminder {\n  enabled: boolean;\n  beforeMinutes: number;\n  email: boolean;\n  push: boolean;\n}\n\nexport interface AIInsight {\n  id: string;\n  userId: string;\n  type: InsightType;\n  title: string;\n  description: string;\n  priority: InsightPriority;\n  actionable: boolean;\n  metadata: Record<string, any>;\n  isRead: boolean;\n  createdAt: Date;\n  updatedAt: Date;\n}\n\nexport interface Report {\n  id: string;\n  userId: string;\n  type: ReportType;\n  name: string;\n  data: Record<string, any>;\n  generatedAt: Date;\n  expiresAt?: Date;\n}\n\nexport interface Subscription {\n  id: string;\n  userId: string;\n  plan: SubscriptionPlan;\n  status: SubscriptionStatus;\n  stripeCustomerId: string;\n  stripeSubscriptionId: string;\n  currentPeriodStart: Date;\n  currentPeriodEnd: Date;\n  cancelAtPeriodEnd: boolean;\n  usage: SubscriptionUsage;\n  createdAt: Date;\n  updatedAt: Date;\n}\n\nexport interface SubscriptionUsage {\n  prospects: number;\n  icps: number;\n  sequences: number;\n  messages: number;\n  limits: SubscriptionLimits;\n}\n\nexport interface SubscriptionLimits {\n  prospects: number;\n  icps: number;\n  sequences: number;\n  messages: number;\n  teamMembers: number;\n}\n\n// API Response types\nexport interface ApiResponse<T = any> {\n  success: boolean;\n  data?: T;\n  error?: ApiError;\n  meta?: {\n    pagination?: PaginationMeta;\n    total?: number;\n    page?: number;\n    limit?: number;\n  };\n}\n\nexport interface ApiError {\n  code: string;\n  message: string;\n  details?: Record<string, any>;\n}\n\nexport interface PaginationMeta {\n  total: number;\n  page: number;\n  limit: number;\n  totalPages: number;\n  hasNext: boolean;\n  hasPrev: boolean;\n}\n\n// Utility types\nexport type UserRole = 'CLIENT' | 'ADMIN' | 'TEAM_MEMBER' | 'TEAM_OWNER';\nexport type Language = 'en' | 'fr';\nexport type DataRegion = 'US' | 'EU' | 'CA';\nexport type SubscriptionPlan = 'STARTER' | 'PRO' | 'BUSINESS';\nexport type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'unpaid' | 'incomplete';\nexport type CompanySize = 'startup' | 'small' | 'medium' | 'large' | 'enterprise';\nexport type RevenueRange = 'under_1m' | '1m_10m' | '10m_50m' | '50m_100m' | 'over_100m';\nexport type ProspectStage = 'new' | 'contacted' | 'meeting' | 'negotiation' | 'won' | 'lost';\nexport type ProspectSource = 'csv_import' | 'url_scraping' | 'manual' | 'api' | 'integration';\nexport type CampaignStatus = 'draft' | 'active' | 'paused' | 'completed' | 'archived';\nexport type MessageType = 'initial' | 'follow_up' | 'manual' | 'template';\nexport type MessageChannel = 'email' | 'linkedin' | 'sms' | 'whatsapp';\nexport type MessageStatus = 'draft' | 'scheduled' | 'sent' | 'delivered' | 'opened' | 'clicked' | 'replied' | 'bounced' | 'failed';\nexport type ActivityType = 'call' | 'meeting' | 'email' | 'note' | 'task' | 'demo' | 'follow_up';\nexport type InsightType = 'performance' | 'recommendation' | 'alert' | 'trend' | 'prediction';\nexport type InsightPriority = 'low' | 'medium' | 'high' | 'urgent';\nexport type ReportType = 'performance' | 'prospects' | 'sequences' | 'campaigns' | 'revenue';\n
+// Core TypeScript types for AI Sales Agent
+
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  plan: SubscriptionPlan;
+  companyName?: string;
+  dataRegion: DataRegion;
+  isEmailVerified: boolean;
+  language: Language;
+  timezone: string;
+  createdAt: Date;
+  updatedAt: Date;
+  lastLoginAt?: Date;
+}
+
+export interface ICP {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  criteria: ICPCriteria;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ICPCriteria {
+  industry: string[];
+  companySize: CompanySize[];
+  revenue?: RevenueRange;
+  location: string[];
+  keywords: string[];
+  exclusions?: string[];
+  jobTitles?: string[];
+  technologies?: string[];
+}
+
+export interface Prospect {
+  id: string;
+  userId: string;
+  icpId: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  jobTitle?: string;
+  company: ProspectCompany;
+  linkedinUrl?: string;
+  websiteUrl?: string;
+  phone?: string;
+  notes?: string;
+  score: number;
+  scoreExplanation: ScoreExplanation;
+  stage: ProspectStage;
+  source: ProspectSource;
+  lastContactedAt?: Date;
+  nextFollowUpAt?: Date;
+  isOptedOut: boolean;
+  customFields: Record<string, any>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ProspectCompany {
+  name: string;
+  domain?: string;
+  industry?: string;
+  size?: CompanySize;
+  revenue?: RevenueRange;
+  location?: string;
+  description?: string;
+  employees?: number;
+  founded?: number;
+  technologies?: string[];
+}
+
+export interface ScoreExplanation {
+  total: number;
+  breakdown: {
+    budget: number;
+    authority: number;
+    need: number;
+    timing: number;
+    signals: number;
+  };
+  reasoning: {
+    budget: string;
+    authority: string;
+    need: string;
+    timing: string;
+    signals: string;
+  };
+  confidence: number;
+}
+
+export interface EmailSequence {
+  id: string;
+  userId: string;
+  icpId: string;
+  name: string;
+  description?: string;
+  steps: EmailSequenceStep[];
+  isActive: boolean;
+  stats: SequenceStats;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface EmailSequenceStep {
+  id: string;
+  sequenceId: string;
+  stepNumber: number;
+  subject: string;
+  content: string;
+  delayDays: number;
+  conditions?: SequenceCondition[];
+  isActive: boolean;
+}
+
+export interface SequenceCondition {
+  type: 'opened' | 'clicked' | 'replied' | 'bounced' | 'unsubscribed';
+  action: 'continue' | 'skip' | 'stop';
+  waitDays?: number;
+}
+
+export interface SequenceStats {
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  replied: number;
+  bounced: number;
+  unsubscribed: number;
+  openRate: number;
+  clickRate: number;
+  replyRate: number;
+}
+
+export interface Campaign {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  sequenceId: string;
+  prospects: string[];
+  status: CampaignStatus;
+  startedAt?: Date;
+  completedAt?: Date;
+  stats: SequenceStats;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Enums
+export type UserRole = 'CLIENT' | 'ADMIN' | 'TEAM_MEMBER' | 'TEAM_OWNER';
+export type Language = 'en' | 'fr';
+export type DataRegion = 'US' | 'EU' | 'CA';
+export type SubscriptionPlan = 'STARTER' | 'PRO' | 'BUSINESS';
+export type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'unpaid' | 'incomplete';
+export type CompanySize = 'startup' | 'small' | 'medium' | 'large' | 'enterprise';
+export type RevenueRange = 'under_1m' | '1m_10m' | '10m_50m' | '50m_100m' | 'over_100m';
+export type ProspectStage = 'new' | 'contacted' | 'meeting' | 'negotiation' | 'won' | 'lost';
+export type ProspectSource = 'csv_import' | 'url_scraping' | 'manual' | 'api' | 'integration';
+export type CampaignStatus = 'draft' | 'active' | 'paused' | 'completed' | 'archived';
+export type MessageType = 'initial' | 'follow_up' | 'manual' | 'template';
+export type MessageChannel = 'email' | 'linkedin' | 'sms' | 'whatsapp';
+export type MessageStatus = 'draft' | 'scheduled' | 'sent' | 'delivered' | 'opened' | 'clicked' | 'replied' | 'bounced' | 'failed';
+export type ActivityType = 'call' | 'meeting' | 'email' | 'note' | 'task' | 'demo' | 'follow_up';
+export type InsightType = 'performance' | 'recommendation' | 'alert' | 'trend' | 'prediction';
+export type InsightPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type ReportType = 'performance' | 'prospects' | 'sequences' | 'campaigns' | 'revenue';

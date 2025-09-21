@@ -1,1 +1,86 @@
-import { z } from 'zod';\n\n// User schemas\nexport const UserRegistrationSchema = z.object({\n  email: z.string().email('Invalid email format'),\n  password: z.string().min(8, 'Password must be at least 8 characters')\n    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]/, \n           'Password must contain uppercase, lowercase, number and special character'),\n  firstName: z.string().min(1, 'First name is required').max(50),\n  lastName: z.string().min(1, 'Last name is required').max(50),\n  companyName: z.string().max(100).optional(),\n  language: z.enum(['en', 'fr']).default('en'),\n  dataRegion: z.enum(['US', 'EU', 'CA']).default('EU'),\n  timezone: z.string().default('UTC'),\n  acceptTerms: z.boolean().refine(val => val === true, 'Must accept terms and conditions')\n});\n\nexport const UserLoginSchema = z.object({\n  email: z.string().email('Invalid email format'),\n  password: z.string().min(1, 'Password is required'),\n  rememberMe: z.boolean().optional().default(false)\n});\n\nexport const UserUpdateSchema = z.object({\n  firstName: z.string().min(1).max(50).optional(),\n  lastName: z.string().min(1).max(50).optional(),\n  companyName: z.string().max(100).optional(),\n  language: z.enum(['en', 'fr']).optional(),\n  timezone: z.string().optional()\n});\n\n// ICP schemas\nexport const ICPCriteriaSchema = z.object({\n  industry: z.array(z.string()).min(1, 'At least one industry is required'),\n  companySize: z.array(z.enum(['startup', 'small', 'medium', 'large', 'enterprise'])).min(1),\n  revenue: z.enum(['under_1m', '1m_10m', '10m_50m', '50m_100m', 'over_100m']).optional(),\n  location: z.array(z.string()).min(1, 'At least one location is required'),\n  keywords: z.array(z.string()).min(1, 'At least one keyword is required'),\n  exclusions: z.array(z.string()).optional(),\n  jobTitles: z.array(z.string()).optional(),\n  technologies: z.array(z.string()).optional()\n});\n\nexport const ICPCreateSchema = z.object({\n  name: z.string().min(1, 'ICP name is required').max(100),\n  description: z.string().max(500).optional(),\n  criteria: ICPCriteriaSchema\n});\n\nexport const ICPUpdateSchema = ICPCreateSchema.partial();\n\n// Prospect schemas\nexport const ProspectCompanySchema = z.object({\n  name: z.string().min(1, 'Company name is required').max(200),\n  domain: z.string().url().optional().or(z.literal('')),\n  industry: z.string().max(100).optional(),\n  size: z.enum(['startup', 'small', 'medium', 'large', 'enterprise']).optional(),\n  revenue: z.enum(['under_1m', '1m_10m', '10m_50m', '50m_100m', 'over_100m']).optional(),\n  location: z.string().max(200).optional(),\n  description: z.string().max(1000).optional(),\n  employees: z.number().int().positive().optional(),\n  founded: z.number().int().min(1800).max(new Date().getFullYear()).optional(),\n  technologies: z.array(z.string()).optional()\n});\n\nexport const ProspectCreateSchema = z.object({\n  email: z.string().email('Invalid email format'),\n  firstName: z.string().max(100).optional(),\n  lastName: z.string().max(100).optional(),\n  jobTitle: z.string().max(200).optional(),\n  company: ProspectCompanySchema,\n  linkedinUrl: z.string().url().optional().or(z.literal('')),\n  websiteUrl: z.string().url().optional().or(z.literal('')),\n  phone: z.string().max(20).optional(),\n  notes: z.string().max(2000).optional(),\n  icpId: z.string().uuid('Invalid ICP ID'),\n  source: z.enum(['csv_import', 'url_scraping', 'manual', 'api', 'integration']).default('manual'),\n  customFields: z.record(z.any()).optional().default({})\n});\n\nexport const ProspectUpdateSchema = z.object({\n  firstName: z.string().max(100).optional(),\n  lastName: z.string().max(100).optional(),\n  jobTitle: z.string().max(200).optional(),\n  company: ProspectCompanySchema.partial().optional(),\n  linkedinUrl: z.string().url().optional().or(z.literal('')),\n  websiteUrl: z.string().url().optional().or(z.literal('')),\n  phone: z.string().max(20).optional(),\n  notes: z.string().max(2000).optional(),\n  stage: z.enum(['new', 'contacted', 'meeting', 'negotiation', 'won', 'lost']).optional(),\n  nextFollowUpAt: z.string().datetime().optional(),\n  customFields: z.record(z.any()).optional()\n});\n\n// CSV Import schema\nexport const CSVImportSchema = z.object({\n  icpId: z.string().uuid('Invalid ICP ID'),\n  file: z.instanceof(File, 'File is required'),\n  mapping: z.record(z.string(), z.string()).refine(\n    (mapping) => {\n      const requiredFields = ['email', 'company.name'];\n      return requiredFields.every(field => Object.values(mapping).includes(field));\n    },\n    'Email and company name mappings are required'\n  )\n});\n\n// Email Sequence schemas\nexport const SequenceConditionSchema = z.object({\n  type: z.enum(['opened', 'clicked', 'replied', 'bounced', 'unsubscribed']),\n  action: z.enum(['continue', 'skip', 'stop']),\n  waitDays: z.number().int().min(0).max(365).optional()\n});\n\nexport const EmailSequenceStepSchema = z.object({\n  stepNumber: z.number().int().min(1).max(10),\n  subject: z.string().min(1, 'Subject is required').max(200),\n  content: z.string().min(1, 'Content is required').max(5000),\n  delayDays: z.number().int().min(0).max(365),\n  conditions: z.array(SequenceConditionSchema).optional().default([]),\n  isActive: z.boolean().default(true)\n});\n\nexport const EmailSequenceCreateSchema = z.object({\n  name: z.string().min(1, 'Sequence name is required').max(100),\n  description: z.string().max(500).optional(),\n  icpId: z.string().uuid('Invalid ICP ID'),\n  steps: z.array(EmailSequenceStepSchema).min(1, 'At least one step is required').max(10)\n});\n\nexport const EmailSequenceUpdateSchema = EmailSequenceCreateSchema.partial();\n\n// Campaign schemas\nexport const CampaignCreateSchema = z.object({\n  name: z.string().min(1, 'Campaign name is required').max(100),\n  description: z.string().max(500).optional(),\n  sequenceId: z.string().uuid('Invalid sequence ID'),\n  prospects: z.array(z.string().uuid()).min(1, 'At least one prospect is required')\n});\n\n// Message schemas\nexport const MessageCreateSchema = z.object({\n  prospectId: z.string().uuid('Invalid prospect ID'),\n  type: z.enum(['initial', 'follow_up', 'manual', 'template']).default('manual'),\n  channel: z.enum(['email', 'linkedin', 'sms', 'whatsapp']).default('email'),\n  subject: z.string().max(200).optional(),\n  content: z.string().min(1, 'Content is required').max(5000),\n  scheduledAt: z.string().datetime().optional(),\n  metadata: z.record(z.any()).optional().default({})\n});\n\n// Activity schemas\nexport const ActivityReminderSchema = z.object({\n  enabled: z.boolean().default(false),\n  beforeMinutes: z.number().int().min(0).max(10080).default(60), // Max 1 week\n  email: z.boolean().default(true),\n  push: z.boolean().default(false)\n});\n\nexport const ActivityCreateSchema = z.object({\n  prospectId: z.string().uuid('Invalid prospect ID'),\n  type: z.enum(['call', 'meeting', 'email', 'note', 'task', 'demo', 'follow_up']),\n  title: z.string().min(1, 'Title is required').max(200),\n  description: z.string().max(2000).optional(),\n  scheduledAt: z.string().datetime().optional(),\n  reminder: ActivityReminderSchema.optional(),\n  metadata: z.record(z.any()).optional().default({})\n});\n\nexport const ActivityUpdateSchema = z.object({\n  title: z.string().min(1).max(200).optional(),\n  description: z.string().max(2000).optional(),\n  scheduledAt: z.string().datetime().optional(),\n  completedAt: z.string().datetime().optional(),\n  reminder: ActivityReminderSchema.optional(),\n  metadata: z.record(z.any()).optional()\n});\n\n// API schemas\nexport const PaginationSchema = z.object({\n  page: z.number().int().min(1).default(1),\n  limit: z.number().int().min(1).max(100).default(20),\n  sortBy: z.string().optional(),\n  sortOrder: z.enum(['asc', 'desc']).default('desc')\n});\n\nexport const FilterSchema = z.object({\n  search: z.string().optional(),\n  stage: z.enum(['new', 'contacted', 'meeting', 'negotiation', 'won', 'lost']).optional(),\n  icpId: z.string().uuid().optional(),\n  source: z.enum(['csv_import', 'url_scraping', 'manual', 'api', 'integration']).optional(),\n  dateFrom: z.string().datetime().optional(),\n  dateTo: z.string().datetime().optional(),\n  scoreMin: z.number().min(0).max(100).optional(),\n  scoreMax: z.number().min(0).max(100).optional()\n});\n\n// Validation helpers\nexport type UserRegistration = z.infer<typeof UserRegistrationSchema>;\nexport type UserLogin = z.infer<typeof UserLoginSchema>;\nexport type UserUpdate = z.infer<typeof UserUpdateSchema>;\nexport type ICPCreate = z.infer<typeof ICPCreateSchema>;\nexport type ICPUpdate = z.infer<typeof ICPUpdateSchema>;\nexport type ProspectCreate = z.infer<typeof ProspectCreateSchema>;\nexport type ProspectUpdate = z.infer<typeof ProspectUpdateSchema>;\nexport type CSVImport = z.infer<typeof CSVImportSchema>;\nexport type EmailSequenceCreate = z.infer<typeof EmailSequenceCreateSchema>;\nexport type EmailSequenceUpdate = z.infer<typeof EmailSequenceUpdateSchema>;\nexport type CampaignCreate = z.infer<typeof CampaignCreateSchema>;\nexport type MessageCreate = z.infer<typeof MessageCreateSchema>;\nexport type ActivityCreate = z.infer<typeof ActivityCreateSchema>;\nexport type ActivityUpdate = z.infer<typeof ActivityUpdateSchema>;\nexport type Pagination = z.infer<typeof PaginationSchema>;\nexport type Filter = z.infer<typeof FilterSchema>;\n
+import { z } from 'zod';
+
+// User schemas
+export const UserRegistrationSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(8, 'Password must be at least 8 characters')
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
+           'Password must contain uppercase, lowercase, number and special character'),
+  firstName: z.string().min(1, 'First name is required').max(50),
+  lastName: z.string().min(1, 'Last name is required').max(50),
+  companyName: z.string().max(100).optional(),
+  language: z.enum(['en', 'fr']).default('en'),
+  dataRegion: z.enum(['US', 'EU', 'CA']).default('EU'),
+  timezone: z.string().default('UTC'),
+  acceptTerms: z.boolean().refine(val => val === true, 'Must accept terms and conditions')
+});
+
+export const ICPCriteriaSchema = z.object({
+  industry: z.array(z.string()).min(1, 'At least one industry is required'),
+  companySize: z.array(z.string()).min(1),
+  revenue: z.string().optional(),
+  location: z.array(z.string()).min(1, 'At least one location is required'),
+  keywords: z.array(z.string()).min(1, 'At least one keyword is required'),
+  exclusions: z.array(z.string()).optional(),
+  jobTitles: z.array(z.string()).optional(),
+  technologies: z.array(z.string()).optional()
+});
+
+export const ICPCreateSchema = z.object({
+  name: z.string().min(1, 'ICP name is required').max(100),
+  description: z.string().max(500).optional(),
+  criteria: ICPCriteriaSchema
+});
+
+export const ProspectCreateSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  firstName: z.string().max(100).optional(),
+  lastName: z.string().max(100).optional(),
+  jobTitle: z.string().max(200).optional(),
+  company: z.object({
+    name: z.string().min(1, 'Company name is required').max(200),
+    domain: z.string().url().optional().or(z.literal('')),
+    industry: z.string().max(100).optional(),
+    size: z.enum(['startup', 'small', 'medium', 'large', 'enterprise']).optional(),
+    revenue: z.enum(['under_1m', '1m_10m', '10m_50m', '50m_100m', 'over_100m']).optional(),
+    location: z.string().max(200).optional(),
+    description: z.string().max(1000).optional(),
+    employees: z.number().int().positive().optional(),
+    founded: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
+    technologies: z.array(z.string()).optional()
+  }),
+  linkedinUrl: z.string().url().optional().or(z.literal('')),
+  websiteUrl: z.string().url().optional().or(z.literal('')),
+  phone: z.string().max(20).optional(),
+  notes: z.string().max(2000).optional(),
+  icpId: z.string().uuid('Invalid ICP ID'),
+  source: z.enum(['csv_import', 'url_scraping', 'manual', 'api', 'integration']).default('manual'),
+  customFields: z.record(z.any()).optional().default({})
+});
+
+export const EmailSequenceStepSchema = z.object({
+  stepNumber: z.number().int().min(1).max(10),
+  subject: z.string().min(1, 'Subject is required').max(200),
+  content: z.string().min(1, 'Content is required').max(5000),
+  delayDays: z.number().int().min(0).max(365),
+  conditions: z.array(z.object({
+    type: z.enum(['opened', 'clicked', 'replied', 'bounced', 'unsubscribed']),
+    action: z.enum(['continue', 'skip', 'stop']),
+    waitDays: z.number().int().min(0).max(365).optional()
+  })).optional().default([]),
+  isActive: z.boolean().default(true)
+});
+
+export const EmailSequenceCreateSchema = z.object({
+  name: z.string().min(1, 'Sequence name is required').max(100),
+  description: z.string().max(500).optional(),
+  icpId: z.string().uuid('Invalid ICP ID'),
+  steps: z.array(EmailSequenceStepSchema).min(1, 'At least one step is required').max(10)
+});
+
+// Type exports
+export type UserRegistration = z.infer<typeof UserRegistrationSchema>;
+export type ICPCriteria = z.infer<typeof ICPCriteriaSchema>;
+export type ICPCreate = z.infer<typeof ICPCreateSchema>;
+export type ProspectCreate = z.infer<typeof ProspectCreateSchema>;
+export type EmailSequenceCreate = z.infer<typeof EmailSequenceCreateSchema>;
