@@ -16,6 +16,7 @@ model User {
   lastName          String
   hashedPassword    String
   role              String    @default("CLIENT")
+  plan              String    @default("STARTER") // STARTER, PRO, BUSINESS
   companyName       String?
   language          String    @default("en")
   dataRegion        String    @default("EU")
@@ -50,22 +51,70 @@ model Session {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Subscription model - NEW
+// Subscription model - UPDATED
 model Subscription {
   id                   String    @id @default(uuid())
   userId               String    @unique
   stripeCustomerId     String?   @unique
   stripeSubscriptionId String?   @unique
+  stripePriceId        String?   // Added for webhook
   plan                 String    @default("STARTER")
-  status               String    @default("INACTIVE")
+  status               String    @default("INACTIVE") // INACTIVE, TRIALING, ACTIVE, PAST_DUE, CANCELED, UNPAID, INCOMPLETE
+  trialEndsAt          DateTime? // Added for trial support
   currentPeriodStart   DateTime?
   currentPeriodEnd     DateTime?
   cancelAtPeriodEnd    Boolean   @default(false)
+  canceledAt           DateTime? // Added for cancellation tracking
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   
   // Relations
   user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usage                SubscriptionUsage?
+  payments             Payment[]
+}
+
+// NEW: Subscription Usage model
+model SubscriptionUsage {
+  id                String    @id @default(uuid())
+  subscriptionId    String    @unique
+  prospectsUsed     Int       @default(0)
+  prospectsLimit    Int       @default(200)
+  icpsUsed          Int       @default(0)
+  icpsLimit         Int       @default(1)
+  sequencesUsed     Int       @default(0)
+  sequencesLimit    Int       @default(1)
+  messagesUsed      Int       @default(0)
+  messagesLimit     Int       @default(1000)
+  periodStart       DateTime
+  periodEnd         DateTime
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  subscription      Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+}
+
+// NEW: Payment model
+model Payment {
+  id                   String    @id @default(uuid())
+  subscriptionId       String
+  stripePaymentId      String    @unique
+  stripeInvoiceId      String?   @unique
+  amount               Int       // in cents
+  currency             String    @default("USD")
+  status               String    // SUCCEEDED, FAILED, PENDING
+  failureReason        String?
+  billingPeriodStart   DateTime?
+  billingPeriodEnd     DateTime?
+  paidAt               DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  
+  // Relations
+  subscription         Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  
+  @@index([subscriptionId, status])
 }
 
 // ICP (Ideal Customer Profile)
