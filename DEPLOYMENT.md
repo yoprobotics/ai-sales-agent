@@ -1,134 +1,184 @@
-# 🚀 Deployment Guide - AI Sales Agent
+# 🚀 AI Sales Agent - Vercel Deployment Guide
 
-## Prerequisites
+## 📝 Prerequisites
 
-- Vercel account
-- PostgreSQL database (Neon recommended)
-- GitHub repository connected to Vercel
+Before deploying to Vercel, ensure you have:
 
-## Environment Variables Setup
+1. **Vercel Account**: Sign up at [vercel.com](https://vercel.com)
+2. **GitHub Repository**: Connected to your Vercel account
+3. **PostgreSQL Database**: Neon, Supabase, or any PostgreSQL provider
+4. **SendGrid Account**: For email functionality
+5. **Stripe Account**: For payment processing (optional for MVP)
+6. **OpenAI API Key**: For AI features (optional for MVP)
 
-### Required Variables for Production
+## 🛠️ Deployment Steps
 
-1. **Database**
-```bash
-DATABASE_URL="postgresql://user:password@host/database?sslmode=require"
-```
-
-2. **JWT Authentication**
-```bash
-JWT_SECRET="generate-a-secure-32-char-string"
-JWT_REFRESH_SECRET="generate-another-secure-32-char-string"
-JWT_EXPIRES_IN="15m"
-JWT_REFRESH_EXPIRES_IN="7d"
-```
-
-3. **Application**
-```bash
-NODE_ENV="production"
-APP_BASE_URL="https://your-domain.vercel.app"
-NEXT_PUBLIC_APP_URL="https://your-domain.vercel.app"
-```
-
-4. **Encryption**
-```bash
-ENCRYPTION_KEY="generate-32-character-key"
-SESSION_SECRET="generate-32-character-session-key"
-```
-
-## Vercel Deployment Steps
-
-### 1. Import Project
+### 1. Import Project to Vercel
 
 1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Click "New Project"
+2. Click **"Add New Project"**
 3. Import `yoprobotics/ai-sales-agent` repository
-4. Select the `main` branch
+4. Select the branch to deploy (usually `main`)
 
 ### 2. Configure Build Settings
 
+Vercel should auto-detect the settings from `vercel.json`, but verify:
+
 - **Framework Preset**: Next.js
-- **Root Directory**: `.` (leave empty)
+- **Root Directory**: `./` (leave empty)
 - **Build Command**: `cd apps/web && npm install && npm run build`
 - **Output Directory**: `apps/web/.next`
 - **Install Command**: `npm install`
 
-### 3. Add Environment Variables
+### 3. Set Environment Variables
 
-1. Go to Project Settings → Environment Variables
-2. Add all required variables from `.env.example`
-3. Make sure to use production values
-4. Click "Save"
+Add these environment variables in Vercel Dashboard → Settings → Environment Variables:
+
+#### Required Variables
+
+```bash
+# Database (PostgreSQL)
+DATABASE_URL=postgresql://user:password@host:5432/database_name
+
+# Authentication
+JWT_SECRET=generate-a-secure-32-character-secret
+JWT_REFRESH_SECRET=generate-another-secure-32-character-secret
+
+# Application
+NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
+NODE_ENV=production
+```
+
+#### Email Configuration (Required for full functionality)
+
+```bash
+# SendGrid
+SENDGRID_API_KEY=SG.your-sendgrid-api-key
+SENDGRID_FROM_EMAIL=noreply@yourdomain.com
+SENDGRID_REPLY_TO=support@yourdomain.com
+```
+
+#### Payment Processing (Optional for MVP)
+
+```bash
+# Stripe
+STRIPE_SECRET_KEY=sk_live_your-stripe-secret-key
+STRIPE_PUBLISHABLE_KEY=pk_live_your-stripe-publishable-key
+STRIPE_WEBHOOK_SECRET=whsec_your-webhook-secret
+```
+
+#### AI Features (Optional for MVP)
+
+```bash
+# OpenAI
+OPENAI_API_KEY=sk-your-openai-api-key
+```
 
 ### 4. Deploy
 
-1. Click "Deploy"
-2. Wait for build to complete (~3-5 minutes)
-3. Test the deployment URL
+1. Click **"Deploy"** button
+2. Wait for the build to complete (usually 2-3 minutes)
+3. Vercel will provide you with a deployment URL
 
-## Post-Deployment Checklist
+## 🔧 Post-Deployment Setup
 
-- [ ] Test health endpoint: `https://your-domain.vercel.app/api/health`
-- [ ] Test registration flow
-- [ ] Test login flow
-- [ ] Test dashboard access
-- [ ] Check browser console for errors
-- [ ] Verify database connectivity
-- [ ] Check logs in Vercel dashboard
+### 1. Database Migrations
 
-## Database Setup (Neon)
-
-1. Create account at [Neon](https://neon.tech)
-2. Create new project
-3. Copy connection string
-4. Run migrations:
+After first deployment, run database migrations:
 
 ```bash
-# In local environment with production DATABASE_URL
-export DATABASE_URL="your-neon-connection-string"
-cd apps/web
-npx prisma migrate deploy
+# Connect to your project
+vercel link
+
+# Run migrations in production
+vercel env pull .env.production
+npx prisma migrate deploy --schema=apps/web/prisma/schema.prisma
 ```
 
-## Monitoring
+### 2. Configure Custom Domain (Optional)
 
-- **Health Check**: `/api/health`
-- **Logs**: Vercel Dashboard → Functions → Logs
-- **Analytics**: Vercel Dashboard → Analytics
-- **Database**: Neon Dashboard
+1. Go to Vercel Dashboard → Settings → Domains
+2. Add your custom domain
+3. Follow DNS configuration instructions
 
-## Troubleshooting
+### 3. Set up Webhooks
 
-### Build Errors
+#### Stripe Webhooks (if using payments)
+1. Go to Stripe Dashboard → Webhooks
+2. Add endpoint: `https://your-app.vercel.app/api/webhooks/stripe`
+3. Select events to listen for
+4. Copy webhook secret to `STRIPE_WEBHOOK_SECRET` env var
 
-1. Check Vercel build logs
-2. Ensure all dependencies are in `package.json`
-3. Verify Node version compatibility
+## 🐛 Troubleshooting
 
-### Runtime Errors
+### Common Issues and Solutions
 
-1. Check function logs in Vercel dashboard
-2. Verify all environment variables are set
-3. Check database connectivity
+#### Build Fails with Module Not Found
 
-### Database Issues
+**Error**: `Module not found: Can't resolve '@package/name'`
 
-1. Verify `DATABASE_URL` includes `?sslmode=require`
-2. Check Neon dashboard for connection limits
-3. Run `prisma generate` if schema changed
+**Solution**: 
+- Ensure all dependencies are listed in `package.json`
+- Check that internal packages are properly linked
+- Clear cache: `vercel --force`
 
-## Security Checklist
+#### PostCSS/Tailwind Errors
 
-- [ ] All sensitive keys are in environment variables
-- [ ] JWT secrets are strong and unique
-- [ ] Database uses SSL
-- [ ] Security headers are configured
-- [ ] Rate limiting is enabled
-- [ ] CORS is properly configured
+**Error**: `Cannot find module 'tailwindcss'`
 
-## Support
+**Solution**:
+- Verify `tailwindcss` and `autoprefixer` are in `devDependencies`
+- Check that `postcss.config.mjs` exists
+- Ensure `tailwind.config.js` is properly configured
 
-For deployment issues:
-1. Check Vercel status page
-2. Review deployment logs
-3. Contact support with deployment ID
+#### Database Connection Issues
+
+**Error**: `Can't reach database server`
+
+**Solution**:
+- Verify `DATABASE_URL` is correctly formatted
+- Check database allows connections from Vercel IPs
+- Ensure SSL mode is configured if required
+
+#### Environment Variables Not Working
+
+**Solution**:
+- Use `NEXT_PUBLIC_` prefix for client-side variables
+- Redeploy after adding/changing environment variables
+- Check variable names match exactly (case-sensitive)
+
+## 🚀 Performance Optimization
+
+### Recommended Settings
+
+1. **Enable Caching**: Use Vercel Edge Cache for static assets
+2. **Image Optimization**: Use Next.js Image component
+3. **Code Splitting**: Implement dynamic imports for large components
+4. **Database Pooling**: Use connection pooling for PostgreSQL
+
+### Monitoring
+
+1. **Vercel Analytics**: Enable in project settings
+2. **Error Tracking**: Set up Sentry (optional)
+3. **Performance Monitoring**: Use Vercel Speed Insights
+
+## 📚 Additional Resources
+
+- [Vercel Documentation](https://vercel.com/docs)
+- [Next.js Deployment Guide](https://nextjs.org/docs/deployment)
+- [Prisma with Vercel](https://www.prisma.io/docs/guides/deployment/deployment-guides/deploying-to-vercel)
+- [Environment Variables in Vercel](https://vercel.com/docs/concepts/projects/environment-variables)
+
+## 🆘 Support
+
+If you encounter issues:
+
+1. Check the [build logs](https://vercel.com/dashboard) in Vercel Dashboard
+2. Review this troubleshooting guide
+3. Create an issue in the [GitHub repository](https://github.com/yoprobotics/ai-sales-agent/issues)
+4. Contact support at support@aisalesagent.com
+
+---
+
+**Last Updated**: September 2025
+**Version**: 1.0.0
