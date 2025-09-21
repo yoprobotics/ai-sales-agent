@@ -1,54 +1,16 @@
 {
-  "framework": "nextjs",
   "buildCommand": "cd apps/web && npm install && npm run build",
   "outputDirectory": "apps/web/.next",
+  "framework": "nextjs",
   "installCommand": "npm install",
-  "rootDirectory": ".",
+  "devCommand": "npm run dev",
+  "regions": ["iad1"],
   "functions": {
     "apps/web/src/app/api/**/*.ts": {
-      "runtime": "nodejs20.x",
-      "maxDuration": 30
+      "maxDuration": 10
     }
   },
   "env": {
-    "NODE_ENV": "production"
-  },
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options", 
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        },
-        {
-          "key": "Referrer-Policy",
-          "value": "strict-origin-when-cross-origin"
-        },
-        {
-          "key": "Strict-Transport-Security",
-          "value": "max-age=31536000; includeSubDomains"
-        },
-        {
-          "key": "Permissions-Policy",
-          "value": "camera=(), microphone=(), geolocation=()"
-        }
-      ]
-    }
-  ],
-  "redirects": [
-    {
-      "source": "/api",
-      "destination": "/api/health",
-      "permanent": false
-    }
-  ]
+    "NEXT_TELEMETRY_DISABLED": "1"
+  }
 }
