@@ -1,88 +1,94 @@
 # AI Sales Agent - Web Application
 
-## 🚀 Quick Start
+This is the main Next.js application for the AI Sales Agent platform.
+
+## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 20.x
+- Node.js 20+
 - PostgreSQL database
-- npm 10.x or higher
+- Environment variables configured
 
 ### Installation
 
 ```bash
-# Install dependencies
 npm install
-
-# Generate Prisma client
-npm run postinstall
-
-# Run development server
-npm run dev
 ```
 
-## 📦 Deployment to Vercel
+### Environment Setup
 
-### Vercel Configuration
-
-1. **Framework Preset**: Next.js
-2. **Root Directory**: `apps/web`
-3. **Build Command**: `npm run build` (or leave blank for auto-detect)
-4. **Output Directory**: `.next` (or leave blank for auto-detect)
-5. **Install Command**: `npm install` (or leave blank for auto-detect)
-6. **Node Version**: 20.x
-
-### Environment Variables
-
-Set the following environment variables in Vercel:
+Create a `.env.local` file:
 
 ```env
-# Required
 DATABASE_URL=postgresql://...
 JWT_SECRET=your-secret-key
 JWT_REFRESH_SECRET=your-refresh-secret
-NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
-
-# Optional (for full features)
-STRIPE_SECRET_KEY=sk_...
-SENDGRID_API_KEY=SG...
-OPENAI_API_KEY=sk-...
 ```
 
 ### Database Setup
 
-1. Create a PostgreSQL database (Neon, Supabase, or any provider)
-2. Set the `DATABASE_URL` in Vercel environment variables
-3. The schema will be automatically created on first deployment
+```bash
+npx prisma generate
+npx prisma migrate dev
+```
 
-## 🛠 Available Scripts
+### Development
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000)
+
+### Production Build
+
+```bash
+npm run build
+npm start
+```
+
+## 📁 Project Structure
+
+```
+app/
+├── api/              # API routes
+│   └── health/       # Health check endpoint
+├── page.tsx          # Home page
+├── layout.tsx        # Root layout
+├── globals.css       # Global styles
+└── not-found.tsx     # 404 page
+
+components/           # React components
+lib/                  # Utilities and helpers
+prisma/              # Database schema
+public/              # Static assets
+```
+
+## 🛠 Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Database**: PostgreSQL with Prisma ORM
+- **Authentication**: JWT
+- **Deployment**: Vercel
+
+## 📄 Available Scripts
 
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm start` - Start production server
 - `npm run lint` - Run ESLint
+- `npm run prisma:generate` - Generate Prisma client
 
-## 📝 Notes
+## 🔗 API Endpoints
 
-- The app uses Prisma for database management
-- Authentication is handled via JWT tokens
-- UI components use Radix UI and Tailwind CSS
-- State management with React Query and Zustand
+- `GET /api/health` - Health check endpoint
 
-## 🐛 Troubleshooting
+## 🚢 Deployment
 
-### Build Errors on Vercel
+The application is configured for automatic deployment on Vercel. Push to the `main` branch to trigger a deployment.
 
-1. Ensure Node.js version is set to 20.x
-2. Check that `DATABASE_URL` is properly configured
-3. Verify all required dependencies are in `package.json`
-4. Use `npm install` instead of other package managers
+## 📝 License
 
-### Database Connection Issues
-
-1. Verify `DATABASE_URL` format: `postgresql://user:password@host:5432/dbname?sslmode=require`
-2. Ensure database is accessible from Vercel IPs
-3. Check SSL mode settings for your database provider
-
-## 📄 License
-
-Proprietary - All Rights Reserved
+Proprietary - All rights reserved
