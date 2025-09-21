@@ -6,7 +6,7 @@ import {
   ChartBarIcon, 
   UserGroupIcon, 
   EnvelopeIcon, 
-  TrendingUpIcon,
+  ArrowTrendingUpIcon,
   PlusIcon,
   EyeIcon
 } from '@heroicons/react/24/outline';
@@ -109,7 +109,7 @@ export function DashboardOverview() {
       title: t('dashboard.stats.qualifiedProspects'),
       value: stats?.qualifiedProspects || 0,
       change: ((stats?.qualifiedProspects || 0) / (stats?.totalProspects || 1)) * 100,
-      icon: TrendingUpIcon,
+      icon: ArrowTrendingUpIcon,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
       isPercentage: true,
