@@ -1,10 +1,9 @@
-import { type NextConfig } from 'next'
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   
-  // Skip linting and type checking during build on Vercel (for now)
+  // Skip linting and type checking during build on Vercel (for MVP)
   eslint: {
     ignoreDuringBuilds: true,
   },
