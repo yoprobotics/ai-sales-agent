@@ -1,6 +1,12 @@
 {
-  "installCommand": "npm install",
-  "buildCommand": "chmod +x build.sh && ./build.sh",
+  "framework": null,
   "outputDirectory": "apps/web/.next",
-  "framework": null
+  "installCommand": "echo 'Using custom build script'",
+  "buildCommand": "bash vercel-build.sh",
+  "devCommand": "npm run dev",
+  "functions": {
+    "apps/web/app/api/**/*.ts": {
+      "maxDuration": 10
+    }
+  }
 }
