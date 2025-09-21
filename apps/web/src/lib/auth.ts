@@ -70,6 +70,7 @@ export async function setAuthCookies(
 ) {
   const cookieStore = cookies();
   
+  // Use consistent naming without underscores
   cookieStore.set('accessToken', accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
