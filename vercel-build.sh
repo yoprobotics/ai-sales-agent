@@ -1,21 +1,17 @@
 #!/bin/bash
 
 echo "🚀 Starting Vercel build process..."
+echo "📦 Installing dependencies..."
+
+# Install dependencies at root level if needed
+npm install
 
 # Navigate to web app directory
-cd apps/web
-
-echo "📦 Installing ALL dependencies (including devDependencies)..."
-# Force installation of all dependencies including devDependencies
-npm install --production=false
-
-echo "🔍 Checking Tailwind CSS installation..."
-ls -la node_modules/.bin/tailwindcss || echo "⚠️ Tailwind CSS not found!"
-
-echo "🔍 Checking PostCSS installation..."  
-ls -la node_modules/.bin/postcss || echo "⚠️ PostCSS not found!"
+echo "🔍 Checking Prisma installation..."
+ls -la node_modules/.bin/prisma || echo "Prisma not in root"
 
 echo "🎯 Generating Prisma Client..."
+cd apps/web
 npx prisma generate
 
 echo "🏗️ Building Next.js application..."
