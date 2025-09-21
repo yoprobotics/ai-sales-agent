@@ -1,99 +1,92 @@
-import bcrypt from 'bcryptjs'
-import { prisma } from '@/lib/prisma'
-import { UserRole } from '@prisma/client'
-import { generateAccessToken, generateRefreshToken, verifyToken } from '@/lib/jwt'
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import { User } from '@prisma/client';
+import { cookies } from 'next/headers';
 
-interface UserPayload {
-  id: string
-  email: string
-  firstName: string
-  lastName: string
-  role: UserRole
-  plan: string
-}
+const JWT_SECRET = process.env.JWT_SECRET!;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
 
-export async function generateTokens(user: UserPayload) {
-  const accessToken = generateAccessToken(user)
-  const refreshToken = generateRefreshToken(user.id)
-  return { accessToken, refreshToken }
-}
-
-export async function verifyAccessToken(token: string): Promise<UserPayload | null> {
-  const payload = await verifyToken(token)
-  if (!payload) return null
-  
-  return {
-    id: payload.userId,
-    email: payload.email,
-    firstName: payload.firstName || '',
-    lastName: payload.lastName || '',
-    role: payload.role as UserRole,
-    plan: payload.plan || 'STARTER',
-  }
-}
-
-export async function verifyRefreshToken(token: string): Promise<{ id: string; email: string } | null> {
-  const payload = await verifyToken(token, true)
-  if (!payload) return null
-  
-  return {
-    id: payload.userId,
-    email: payload.email,
-  }
-}
-
-export async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string } | null> {
-  const payload = await verifyRefreshToken(refreshToken)
-  if (!payload) return null
-
-  const user = await prisma.user.findUnique({
-    where: { id: payload.id },
-    select: {
-      id: true,
-      email: true,
-      firstName: true,
-      lastName: true,
-      role: true,
-      plan: true,
-      refreshToken: true,
-      refreshTokenExp: true,
-    },
-  })
-
-  if (!user || user.refreshToken !== refreshToken) {
-    return null
-  }
-
-  if (user.refreshTokenExp && user.refreshTokenExp < new Date()) {
-    return null
-  }
-
-  return generateTokens(user)
-}
-
-export async function validatePassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash)
+interface JWTPayload {
+  userId: string;
+  email: string;
+  role: string;
 }
 
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12)
+  return bcrypt.hash(password, 12);
 }
 
-// Verify auth from NextRequest
-export async function verifyAuth(request: Request): Promise<{ authenticated: boolean; userId?: string; email?: string }> {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '')
-  if (!token) {
-    return { authenticated: false }
-  }
+export async function verifyPassword(
+  password: string,
+  hashedPassword: string
+): Promise<boolean> {
+  return bcrypt.compare(password, hashedPassword);
+}
+
+export function generateAccessToken(user: Partial<User>): string {
+  return jwt.sign(
+    {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    },
+    JWT_SECRET,
+    { expiresIn: '15m' }
+  );
+}
+
+export function generateRefreshToken(user: Partial<User>): string {
+  return jwt.sign(
+    {
+      userId: user.id,
+      email: user.email,
+    },
+    JWT_REFRESH_SECRET,
+    { expiresIn: '7d' }
+  );
+}
+
+export function verifyAccessToken(token: string): JWTPayload {
+  return jwt.verify(token, JWT_SECRET) as JWTPayload;
+}
+
+export function verifyRefreshToken(token: string): JWTPayload {
+  return jwt.verify(token, JWT_REFRESH_SECRET) as JWTPayload;
+}
+
+export async function setAuthCookies(
+  accessToken: string,
+  refreshToken: string
+) {
+  const cookieStore = cookies();
   
-  const payload = await verifyToken(token)
-  if (!payload) {
-    return { authenticated: false }
-  }
+  cookieStore.set('access_token', accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 15 * 60, // 15 minutes
+    path: '/',
+  });
   
-  return {
-    authenticated: true,
-    userId: payload.userId,
-    email: payload.email,
-  }
+  cookieStore.set('refresh_token', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60, // 7 days
+    path: '/',
+  });
+}
+
+export async function clearAuthCookies() {
+  const cookieStore = cookies();
+  cookieStore.delete('access_token');
+  cookieStore.delete('refresh_token');
+}
+
+export async function getAuthFromCookies() {
+  const cookieStore = cookies();
+  const accessToken = cookieStore.get('access_token')?.value;
+  const refreshToken = cookieStore.get('refresh_token')?.value;
+  
+  return { accessToken, refreshToken };
 }
