@@ -1,7 +1,8 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+// ReactQueryDevtools is optional and only for development
+// import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'react-hot-toast';
 import { useState } from 'react';
 import { IntlProvider } from '@/components/providers/intl-provider';
@@ -52,7 +53,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
           </AuthProvider>
         </ThemeProvider>
       </IntlProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {/* ReactQueryDevtools is optional and only needed in development */}
+      {/* <ReactQueryDevtools initialIsOpen={false} /> */}
     </QueryClientProvider>
   );
 }
