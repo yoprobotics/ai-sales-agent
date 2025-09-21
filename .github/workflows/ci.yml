@@ -92,5 +92,5 @@ jobs:
         env:
           # Mock env vars for build
           DATABASE_URL: postgresql://user:password@localhost:5432/test
-          JWT_SECRET: test-jwt-secret
+          JWT_SECRET: test-jwt-secret-min-32-chars
           NEXT_PUBLIC_APP_URL: http://localhost:3000

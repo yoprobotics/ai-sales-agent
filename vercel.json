@@ -1,8 +1,7 @@
 {
   "framework": "nextjs",
   "outputDirectory": "apps/web/.next",
-  "installCommand": "npm install",
+  "installCommand": "npm install && cd apps/web && npm install",
   "buildCommand": "cd apps/web && npx prisma generate && npm run build",
-  "devCommand": "cd apps/web && npm run dev",
-  "ignoreCommand": "git diff HEAD^ HEAD --quiet ."
+  "devCommand": "cd apps/web && npm run dev"
 }
