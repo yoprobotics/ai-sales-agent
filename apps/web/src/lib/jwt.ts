@@ -20,7 +20,7 @@ interface TokenPayload {
   plan?: string
 }
 
-export async function generateAccessToken(user: any): string {
+export async function generateAccessToken(user: any): Promise<string> {
   const token = await new SignJWT({
     userId: user.id,
     email: user.email,
@@ -37,7 +37,7 @@ export async function generateAccessToken(user: any): string {
   return token
 }
 
-export async function generateRefreshToken(userId: string): string {
+export async function generateRefreshToken(userId: string): Promise<string> {
   const token = await new SignJWT({ userId, type: 'refresh' })
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime(JWT_REFRESH_EXPIRES_IN)
