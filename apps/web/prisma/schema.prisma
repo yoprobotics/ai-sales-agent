@@ -8,23 +8,102 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enums
+enum UserRole {
+  CLIENT
+  TEAM_MEMBER
+  TEAM_OWNER
+  ADMIN
+}
+
+enum SubscriptionPlan {
+  STARTER
+  PRO
+  BUSINESS
+}
+
+enum SubscriptionStatus {
+  INACTIVE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  INCOMPLETE
+}
+
+enum ProspectStage {
+  new
+  contacted
+  meeting
+  negotiation
+  won
+  lost
+}
+
+enum ProspectSource {
+  csv_import
+  url_scraping
+  manual
+  api
+  integration
+}
+
+enum MessageStatus {
+  draft
+  scheduled
+  sent
+  delivered
+  opened
+  clicked
+  replied
+  bounced
+  failed
+}
+
+enum MessageChannel {
+  email
+  linkedin
+  sms
+  whatsapp
+}
+
+enum CampaignStatus {
+  draft
+  active
+  paused
+  completed
+  archived
+}
+
+enum Language {
+  en
+  fr
+}
+
+enum DataRegion {
+  US
+  EU
+  CA
+}
+
 // User model
 model User {
-  id                String    @id @default(uuid())
-  email             String    @unique
+  id                String            @id @default(uuid())
+  email             String            @unique
   firstName         String
   lastName          String
   hashedPassword    String
-  role              String    @default("CLIENT")
-  plan              String    @default("STARTER") // STARTER, PRO, BUSINESS
+  role              UserRole          @default(CLIENT)
+  plan              SubscriptionPlan  @default(STARTER)
   companyName       String?
-  language          String    @default("en")
-  dataRegion        String    @default("EU")
-  timezone          String    @default("UTC")
-  isEmailVerified   Boolean   @default(false)
+  language          Language          @default(en)
+  dataRegion        DataRegion        @default(EU)
+  timezone          String            @default("UTC")
+  isEmailVerified   Boolean           @default(false)
   lastLoginAt       DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
   
   // Relations
   icps              ICP[]
@@ -53,23 +132,23 @@ model Session {
 
 // Subscription model - UPDATED
 model Subscription {
-  id                   String    @id @default(uuid())
-  userId               String    @unique
-  stripeCustomerId     String?   @unique
-  stripeSubscriptionId String?   @unique
-  stripePriceId        String?   // Added for webhook
-  plan                 String    @default("STARTER")
-  status               String    @default("INACTIVE") // INACTIVE, TRIALING, ACTIVE, PAST_DUE, CANCELED, UNPAID, INCOMPLETE
-  trialEndsAt          DateTime? // Added for trial support
+  id                   String             @id @default(uuid())
+  userId               String             @unique
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  stripePriceId        String?            // Added for webhook
+  plan                 SubscriptionPlan   @default(STARTER)
+  status               SubscriptionStatus @default(INACTIVE)
+  trialEndsAt          DateTime?          // Added for trial support
   currentPeriodStart   DateTime?
   currentPeriodEnd     DateTime?
-  cancelAtPeriodEnd    Boolean   @default(false)
-  canceledAt           DateTime? // Added for cancellation tracking
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  cancelAtPeriodEnd    Boolean            @default(false)
+  canceledAt           DateTime?          // Added for cancellation tracking
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
   
   // Relations
-  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   usage                SubscriptionUsage?
   payments             Payment[]
 }
@@ -136,7 +215,7 @@ model ICP {
 
 // Prospect model
 model Prospect {
-  id              String    @id @default(uuid())
+  id              String         @id @default(uuid())
   userId          String
   icpId           String
   email           String
@@ -148,20 +227,20 @@ model Prospect {
   websiteUrl      String?
   phone           String?
   notes           String?
-  score           Int       @default(0)
+  score           Int            @default(0)
   scoreExplanation Json?
-  stage           String    @default("new")
-  source          String    @default("manual")
+  stage           ProspectStage  @default(new)
+  source          ProspectSource @default(manual)
   lastContactedAt DateTime?
   nextFollowUpAt  DateTime?
-  isOptedOut      Boolean   @default(false)
+  isOptedOut      Boolean        @default(false)
   customFields    Json?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   
   // Relations
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  icp             ICP       @relation(fields: [icpId], references: [id], onDelete: Cascade)
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  icp             ICP            @relation(fields: [icpId], references: [id], onDelete: Cascade)
   messages        Message[]
   activities      Activity[]
   
@@ -176,7 +255,7 @@ model EmailTemplate {
   subject       String
   content       String    @db.Text
   type          String    @default("CUSTOM") // CUSTOM, INTRO, FOLLOW_UP, etc.
-  language      String    @default("en")
+  language      Language  @default(en)
   isActive      Boolean   @default(true)
   usageCount    Int       @default(0)
   metadata      Json?
@@ -228,47 +307,47 @@ model EmailSequenceStep {
 
 // Campaign
 model Campaign {
-  id            String    @id @default(uuid())
+  id            String         @id @default(uuid())
   userId        String
   name          String
   description   String?
   sequenceId    String
-  status        String    @default("draft")
+  status        CampaignStatus @default(draft)
   startedAt     DateTime?
   completedAt   DateTime?
   stats         Json?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   
   // Relations
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sequence      EmailSequence @relation(fields: [sequenceId], references: [id])
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sequence      EmailSequence  @relation(fields: [sequenceId], references: [id])
   messages      Message[]
 }
 
 // Message
 model Message {
-  id              String    @id @default(uuid())
+  id              String         @id @default(uuid())
   prospectId      String
   campaignId      String?
   sequenceStepId  String?
-  type            String    @default("manual")
-  channel         String    @default("email")
+  type            String         @default("manual")
+  channel         MessageChannel @default(email)
   subject         String?
-  content         String    @db.Text
-  status          String    @default("draft")
+  content         String         @db.Text
+  status          MessageStatus  @default(draft)
   sentAt          DateTime?
   deliveredAt     DateTime?
   openedAt        DateTime?
   clickedAt       DateTime?
   repliedAt       DateTime?
   metadata        Json?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   
   // Relations
-  prospect        Prospect  @relation(fields: [prospectId], references: [id], onDelete: Cascade)
-  campaign        Campaign? @relation(fields: [campaignId], references: [id])
+  prospect        Prospect       @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  campaign        Campaign?      @relation(fields: [campaignId], references: [id])
   sequenceStep    EmailSequenceStep? @relation(fields: [sequenceStepId], references: [id])
   
   @@index([prospectId, status])
