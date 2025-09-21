@@ -1,44 +1,39 @@
-import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
-import { prisma } from '@/lib/prisma'
-import { UserRegistrationSchema } from '@/lib/schemas'
-import { generateAccessToken, generateRefreshToken, setAuthCookies } from '@/lib/jwt'
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { hashPassword, generateAccessToken, generateRefreshToken, setAuthCookies } from '@/lib/auth';
+import { registerSchema } from '@/lib/validations';
+import { z } from 'zod';
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json()
+    const body = await request.json();
     
-    // Validate request body
-    const validatedData = UserRegistrationSchema.parse(body)
+    // Validate input
+    const validatedData = registerSchema.parse(body);
     
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email: validatedData.email }
-    })
+      where: { email: validatedData.email },
+    });
     
     if (existingUser) {
       return NextResponse.json(
-        { error: 'User with this email already exists' },
+        { error: 'Email already registered' },
         { status: 400 }
-      )
+      );
     }
     
     // Hash password
-    const passwordHash = await bcrypt.hash(validatedData.password, 12)
+    const hashedPassword = await hashPassword(validatedData.password);
     
     // Create user
     const user = await prisma.user.create({
       data: {
         email: validatedData.email,
-        passwordHash,
+        passwordHash: hashedPassword,
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
         companyName: validatedData.companyName,
-        language: validatedData.language || 'en',
-        dataRegion: validatedData.dataRegion || 'EU',
-        timezone: validatedData.timezone || 'UTC',
-        role: 'CLIENT',
-        plan: 'STARTER'
       },
       select: {
         id: true,
@@ -46,54 +41,42 @@ export async function POST(req: NextRequest) {
         firstName: true,
         lastName: true,
         role: true,
-        plan: true
-      }
-    })
+        plan: true,
+      },
+    });
     
     // Generate tokens
-    const accessToken = generateAccessToken(user)
-    const refreshToken = generateRefreshToken(user.id)
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
     
     // Update user with refresh token
     await prisma.user.update({
       where: { id: user.id },
       data: {
         refreshToken,
-        refreshTokenExp: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-      }
-    })
-    
-    // Create response with cookies
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        plan: user.plan
+        refreshTokenExp: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       },
-      accessToken
-    })
+    });
     
-    // Set auth cookies
-    setAuthCookies(response, accessToken, refreshToken)
+    // Set cookies
+    await setAuthCookies(accessToken, refreshToken);
     
-    return response
-  } catch (error: any) {
-    console.error('Registration error:', error)
-    
-    if (error.name === 'ZodError') {
+    return NextResponse.json({
+      user,
+      accessToken,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
+        { error: 'Validation failed', details: error.errors },
         { status: 400 }
-      )
+      );
     }
     
+    console.error('Registration error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
-    )
+    );
   }
 }

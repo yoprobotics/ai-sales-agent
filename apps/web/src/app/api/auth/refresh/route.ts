@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { refreshAccessToken } from '@/lib/auth';
-import { setCookie, getCookie } from '@/lib/cookies';
+import { prisma } from '@/lib/prisma';
+import { verifyRefreshToken, generateAccessToken, generateRefreshToken, setAuthCookies, getAuthFromCookies } from '@/lib/auth';
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const refreshToken = req.cookies.get('refreshToken')?.value;
+    const { refreshToken } = await getAuthFromCookies();
     
     if (!refreshToken) {
       return NextResponse.json(
@@ -13,48 +13,61 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    const tokens = await refreshAccessToken(refreshToken);
+    // Verify refresh token
+    const payload = verifyRefreshToken(refreshToken);
     
-    if (!tokens) {
+    // Find user and verify stored refresh token
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+    });
+    
+    if (!user || user.refreshToken !== refreshToken) {
       return NextResponse.json(
-        { error: 'Invalid or expired refresh token' },
+        { error: 'Invalid refresh token' },
         { status: 401 }
       );
     }
     
-    // Create response
-    const response = NextResponse.json({
-      success: true,
+    // Check if refresh token is expired
+    if (user.refreshTokenExp && user.refreshTokenExp < new Date()) {
+      return NextResponse.json(
+        { error: 'Refresh token expired' },
+        { status: 401 }
+      );
+    }
+    
+    // Generate new tokens
+    const newAccessToken = generateAccessToken(user);
+    const newRefreshToken = generateRefreshToken(user);
+    
+    // Update user with new refresh token
+    await prisma.user.update({
+      where: { id: user.id },
       data: {
-        accessToken: tokens.accessToken
-      }
+        refreshToken: newRefreshToken,
+        refreshTokenExp: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      },
     });
     
-    // Update cookies
-    setCookie(response, 'accessToken', tokens.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60, // 15 minutes
-      path: '/'
+    // Set new cookies
+    await setAuthCookies(newAccessToken, newRefreshToken);
+    
+    return NextResponse.json({
+      accessToken: newAccessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        plan: user.plan,
+      },
     });
-    
-    setCookie(response, 'refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-      path: '/'
-    });
-    
-    return response;
-    
   } catch (error) {
-    console.error('Token refresh error:', error);
-    
+    console.error('Refresh token error:', error);
     return NextResponse.json(
-      { error: 'Token refresh failed' },
-      { status: 500 }
+      { error: 'Invalid or expired refresh token' },
+      { status: 401 }
     );
   }
 }

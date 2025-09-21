@@ -1,33 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAccessToken } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getAuthFromCookies, verifyAccessToken } from '@/lib/auth';
 
-export async function GET(req: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const token = req.cookies.get('accessToken')?.value;
+    const { accessToken } = await getAuthFromCookies();
     
-    if (!token) {
+    if (!accessToken) {
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
       );
     }
     
-    const userPayload = await verifyAccessToken(token);
+    // Verify access token
+    const payload = verifyAccessToken(accessToken);
     
-    if (!userPayload) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-    
-    // Get fresh user data from database
+    // Get user data
     const user = await prisma.user.findUnique({
-      where: { id: userPayload.id },
+      where: { id: payload.userId },
       select: {
         id: true,
         email: true,
+        emailVerified: true,
         firstName: true,
         lastName: true,
         companyName: true,
@@ -36,10 +31,17 @@ export async function GET(req: NextRequest) {
         dataRegion: true,
         language: true,
         timezone: true,
-        emailVerified: true,
         createdAt: true,
-        lastLoginAt: true,
-      }
+        subscription: {
+          select: {
+            id: true,
+            plan: true,
+            status: true,
+            currentPeriodEnd: true,
+            usage: true,
+          },
+        },
+      },
     });
     
     if (!user) {
@@ -49,17 +51,12 @@ export async function GET(req: NextRequest) {
       );
     }
     
-    return NextResponse.json({
-      success: true,
-      user
-    });
-    
+    return NextResponse.json({ user });
   } catch (error) {
-    console.error('Me endpoint error:', error);
-    
+    console.error('Get user error:', error);
     return NextResponse.json(
-      { error: 'Failed to get user info' },
-      { status: 500 }
+      { error: 'Invalid or expired token' },
+      { status: 401 }
     );
   }
 }
