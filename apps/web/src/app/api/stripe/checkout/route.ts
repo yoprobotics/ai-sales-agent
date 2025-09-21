@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/jwt'
-import { stripeService, STRIPE_PRICE_IDS, getPlanFromPriceId } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
@@ -68,13 +67,8 @@ export async function POST(request: NextRequest) {
     let stripeCustomerId = user.subscription?.stripeCustomerId
     
     if (!stripeCustomerId) {
-      // Create new Stripe customer
-      const customer = await stripeService.createCustomer(
-        user.email,
-        `${user.firstName} ${user.lastName}`
-      )
-      
-      stripeCustomerId = customer.id
+      // For MVP, we'll simulate Stripe customer creation
+      stripeCustomerId = `cus_${Date.now()}_${userId.substring(0, 8)}`
 
       // Create or update subscription record
       await prisma.subscription.upsert({
@@ -92,29 +86,15 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Get price ID for the selected plan
-    const priceKey = `${plan}_${interval.toUpperCase()}` as keyof typeof STRIPE_PRICE_IDS
-    const priceId = STRIPE_PRICE_IDS[priceKey]
-    
-    if (!priceId) {
-      return NextResponse.json(
-        { error: 'Invalid plan or interval' },
-        { status: 400 }
-      )
-    }
-
-    // Create checkout session
+    // For MVP, return mock checkout URL
+    // In production, this would create a real Stripe checkout session
     const baseUrl = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const session = await stripeService.createCheckoutSession({
-      customerId: stripeCustomerId,
-      priceId,
-      successUrl: `${baseUrl}/dashboard/billing?success=true`,
-      cancelUrl: `${baseUrl}/dashboard/billing?canceled=true`,
-    })
-
+    const mockSessionId = `cs_mock_${Date.now()}`
+    
     return NextResponse.json({
-      url: session.url,
-      sessionId: 'mock_session_' + Date.now(),
+      url: `${baseUrl}/dashboard/billing?session=${mockSessionId}&success=pending`,
+      sessionId: mockSessionId,
+      message: 'Mock checkout session created (Stripe integration pending)',
     })
   } catch (error: any) {
     console.error('Error creating checkout session:', error)
