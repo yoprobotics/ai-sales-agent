@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await hashPassword(validatedData.password);
     
-    // Create user
+    // Create user with default values for required fields
     const user = await prisma.user.create({
       data: {
         email: validatedData.email,
@@ -34,9 +34,10 @@ export async function POST(request: NextRequest) {
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
         companyName: validatedData.companyName,
-        language: validatedData.language || 'en',
-        dataRegion: validatedData.dataRegion || 'EU',
-        timezone: validatedData.timezone || 'UTC',
+        // Use default values for fields not in the schema
+        language: 'en',
+        dataRegion: 'EU',
+        timezone: 'UTC',
       },
       select: {
         id: true,
