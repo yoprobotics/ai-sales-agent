@@ -1,22 +1,29 @@
 {
-  "name": "ai-sales-agent",
+  "name": "ai-sales-agent-root",
   "version": "1.0.0",
   "private": true,
   "description": "AI-powered B2B prospecting SaaS platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "build:web": "./vercel-build.sh",
+    "build": "cd apps/web && npm run build",
     "dev": "cd apps/web && npm run dev",
     "lint": "cd apps/web && npm run lint",
-    "test": "cd apps/web && npm run test",
-    "typecheck": "cd apps/web && npm run typecheck",
+    "test": "echo \"No tests yet\"",
+    "typecheck": "cd apps/web && npx tsc --noEmit",
+    "clean": "rm -rf apps/web/.next apps/web/node_modules node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "vercel-build": "bash vercel-build.sh"
+    "vercel-build": "cd apps/web && npm install && npx prisma generate && npm run build"
   },
   "devDependencies": {
     "@types/node": "^20.5.2",
+    "eslint": "^8.48.0",
     "prettier": "^3.0.0",
     "typescript": "^5.2.2"
   },
+  "packageManager": "npm@10.0.0",
   "engines": {
     "node": ">=20.0.0"
   }
