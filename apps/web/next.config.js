@@ -1,19 +1,25 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  swcMinify: true,
   output: 'standalone',
-  experimental: {
-    outputFileTracingRoot: require('path').join(__dirname, '../../')
-  },
   env: {
     NEXT_TELEMETRY_DISABLED: '1'
   },
   eslint: {
+    // Ignore ESLint during build (we run it separately)
     ignoreDuringBuilds: true
   },
   typescript: {
-    // We handle TypeScript errors separately
+    // Ignore TypeScript errors during build (we check it separately)
     ignoreBuildErrors: true
+  },
+  webpack: (config, { isServer }) => {
+    // Fixes for Prisma
+    if (isServer) {
+      config.externals.push('@prisma/client');
+    }
+    return config;
   }
 }
 
