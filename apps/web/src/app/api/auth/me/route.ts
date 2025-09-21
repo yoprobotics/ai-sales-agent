@@ -22,25 +22,16 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         email: true,
-        emailVerified: true,
+        isEmailVerified: true,
         firstName: true,
         lastName: true,
         companyName: true,
         role: true,
-        plan: true,
         dataRegion: true,
         language: true,
         timezone: true,
         createdAt: true,
-        subscription: {
-          select: {
-            id: true,
-            plan: true,
-            status: true,
-            currentPeriodEnd: true,
-            usage: true,
-          },
-        },
+        lastLoginAt: true,
       },
     });
     

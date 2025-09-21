@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Verify password - FIX: Changed passwordHash to hashedPassword
+    // Verify password
     const isValid = await verifyPassword(validatedData.password, user.hashedPassword);
     
     if (!isValid) {
@@ -37,32 +37,31 @@ export async function POST(request: NextRequest) {
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
     
-    // Update user with new refresh token and last login
+    // Delete existing sessions for this user
+    await prisma.session.deleteMany({
+      where: { userId: user.id },
+    });
+    
+    // Create new session with refresh token
+    await prisma.session.create({
+      data: {
+        userId: user.id,
+        token: accessToken,
+        refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      },
+    });
+    
+    // Update user's last login
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        refreshToken,
-        refreshTokenExp: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
         lastLoginAt: new Date(),
       },
     });
     
     // Set cookies
     await setAuthCookies(accessToken, refreshToken);
-    
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        userId: user.id,
-        action: 'USER_LOGIN',
-        entityType: 'User',
-        entityId: user.id,
-        metadata: {
-          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
-          userAgent: request.headers.get('user-agent'),
-        },
-      },
-    });
     
     return NextResponse.json({
       user: {
@@ -71,8 +70,9 @@ export async function POST(request: NextRequest) {
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
-        plan: user.plan,
         companyName: user.companyName,
+        language: user.language,
+        dataRegion: user.dataRegion,
       },
       accessToken,
     });

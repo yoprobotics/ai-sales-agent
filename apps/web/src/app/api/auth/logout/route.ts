@@ -10,24 +10,11 @@ export async function POST(request: NextRequest) {
       try {
         const payload = verifyAccessToken(accessToken);
         
-        // Clear refresh token in database
-        await prisma.user.update({
-          where: { id: payload.userId },
-          data: {
-            refreshToken: null,
-            refreshTokenExp: null,
-          },
+        // Delete all sessions for this user
+        await prisma.session.deleteMany({
+          where: { userId: payload.userId },
         });
         
-        // Create audit log
-        await prisma.auditLog.create({
-          data: {
-            userId: payload.userId,
-            action: 'USER_LOGOUT',
-            entityType: 'User',
-            entityId: payload.userId,
-          },
-        });
       } catch (error) {
         // Token might be expired, but we still want to clear cookies
         console.error('Token verification error during logout:', error);
