@@ -11,7 +11,8 @@ const JWT_REFRESH_SECRET = new TextEncoder().encode(
   process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'your-refresh-secret-key-change-in-production'
 )
 
-export interface JWTPayload {
+// Rename our custom interface to avoid conflict with jose's JWTPayload
+export interface AuthPayload {
   id: string  // Changed from userId to id to match the token generation
   userId: string
   email: string
@@ -61,14 +62,40 @@ export async function createRefreshToken(user: User) {
     .sign(JWT_REFRESH_SECRET)
 }
 
-export async function verifyAccessToken(token: string): Promise<JWTPayload> {
+export async function verifyAccessToken(token: string): Promise<AuthPayload> {
   const { payload } = await jwtVerify(token, JWT_SECRET)
-  return payload as JWTPayload
+  
+  // Validate that the payload has the required fields
+  if (!payload.id || !payload.userId || !payload.email || !payload.role) {
+    throw new Error('Invalid token payload')
+  }
+  
+  return {
+    id: payload.id as string,
+    userId: payload.userId as string,
+    email: payload.email as string,
+    role: payload.role as string,
+    iat: payload.iat,
+    exp: payload.exp
+  }
 }
 
-export async function verifyRefreshToken(token: string): Promise<JWTPayload> {
+export async function verifyRefreshToken(token: string): Promise<AuthPayload> {
   const { payload } = await jwtVerify(token, JWT_REFRESH_SECRET)
-  return payload as JWTPayload
+  
+  // Validate that the payload has the required fields
+  if (!payload.id || !payload.userId || !payload.email || !payload.role) {
+    throw new Error('Invalid token payload')
+  }
+  
+  return {
+    id: payload.id as string,
+    userId: payload.userId as string,
+    email: payload.email as string,
+    role: payload.role as string,
+    iat: payload.iat,
+    exp: payload.exp
+  }
 }
 
 export async function hashPassword(password: string): Promise<string> {
