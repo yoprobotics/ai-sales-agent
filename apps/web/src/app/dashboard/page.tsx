@@ -7,7 +7,7 @@ import {
   UserGroupIcon,
   EnvelopeIcon,
   ChartBarIcon,
-  TrendingUpIcon,
+  ArrowTrendingUpIcon,
   ArrowUpIcon,
   ArrowDownIcon,
   ArrowRightIcon,
@@ -66,7 +66,7 @@ export default function DashboardPage() {
       value: '423',
       change: '+23.1%',
       changeType: 'increase',
-      icon: TrendingUpIcon,
+      icon: ArrowTrendingUpIcon,
       color: 'bg-green-500'
     },
     {
