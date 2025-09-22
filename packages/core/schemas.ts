@@ -78,9 +78,9 @@ export const EmailSequenceCreateSchema = z.object({
   steps: z.array(EmailSequenceStepSchema).min(1, 'At least one step is required').max(10)
 });
 
-// Type exports
+// Type exports with renamed ICPCriteria to avoid conflict with types.ts
 export type UserRegistration = z.infer<typeof UserRegistrationSchema>;
-export type ICPCriteria = z.infer<typeof ICPCriteriaSchema>;
+export type ICPCriteriaInput = z.infer<typeof ICPCriteriaSchema>;  // Renamed from ICPCriteria to avoid conflict
 export type ICPCreate = z.infer<typeof ICPCreateSchema>;
 export type ProspectCreate = z.infer<typeof ProspectCreateSchema>;
 export type EmailSequenceCreate = z.infer<typeof EmailSequenceCreateSchema>;
