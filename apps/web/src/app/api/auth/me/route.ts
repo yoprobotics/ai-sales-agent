@@ -17,16 +17,16 @@ export async function GET(request: NextRequest) {
     const payload = verifyAccessToken(accessToken);
     
     // Check if payload is valid
-    if (!payload || !payload.userId) {
+    if (!payload || !payload.id) {
       return NextResponse.json(
         { error: 'Invalid or expired token' },
         { status: 401 }
       );
     }
     
-    // Get user data
+    // Get user data - using 'id' field from JWT payload
     const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
+      where: { id: payload.id },
       select: {
         id: true,
         email: true,
