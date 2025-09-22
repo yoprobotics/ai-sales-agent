@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyRefreshToken, generateAccessToken, generateRefreshToken, setAuthCookies, getAuthFromCookies } from '@/lib/auth';
+import { verifyRefreshToken, createAccessToken, createRefreshToken, setAuthCookies, getAuthFromCookies } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,9 +53,9 @@ export async function POST(request: NextRequest) {
     
     const user = session.user;
     
-    // Generate new tokens
-    const newAccessToken = generateAccessToken(user);
-    const newRefreshToken = generateRefreshToken(user);
+    // Generate new tokens - using createAccessToken and createRefreshToken
+    const newAccessToken = createAccessToken(user);
+    const newRefreshToken = createRefreshToken(user);
     
     // Update session with new tokens
     await prisma.session.update({
