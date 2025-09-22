@@ -1,1 +1,6 @@
-DELETED
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
