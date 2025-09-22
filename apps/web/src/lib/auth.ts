@@ -12,6 +12,7 @@ const JWT_REFRESH_SECRET = new TextEncoder().encode(
 )
 
 export interface JWTPayload {
+  id: string  // Changed from userId to id to match the token generation
   userId: string
   email: string
   role: string
@@ -19,7 +20,25 @@ export interface JWTPayload {
   exp?: number
 }
 
-export async function createAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp'>) {
+export interface User {
+  id: string
+  email: string
+  firstName: string | null
+  lastName: string | null
+  role: string
+  companyName?: string | null
+  language: string
+  dataRegion: string
+}
+
+export async function createAccessToken(user: User) {
+  const payload = {
+    id: user.id,
+    userId: user.id,
+    email: user.email,
+    role: user.role
+  }
+  
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -27,7 +46,14 @@ export async function createAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp'>
     .sign(JWT_SECRET)
 }
 
-export async function createRefreshToken(payload: Omit<JWTPayload, 'iat' | 'exp'>) {
+export async function createRefreshToken(user: User) {
+  const payload = {
+    id: user.id,
+    userId: user.id,
+    email: user.email,
+    role: user.role
+  }
+  
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -51,6 +77,44 @@ export async function hashPassword(password: string): Promise<string> {
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return await bcrypt.compare(password, hash)
+}
+
+export async function setAuthCookies(accessToken: string, refreshToken: string) {
+  const cookieStore = cookies()
+  
+  // Set access token cookie (httpOnly, secure, sameSite)
+  cookieStore.set('auth-token', accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 15 * 60, // 15 minutes
+    path: '/',
+  })
+  
+  // Set refresh token cookie (httpOnly, secure, sameSite)
+  cookieStore.set('refresh-token', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60, // 7 days
+    path: '/',
+  })
+}
+
+export async function getAuthFromCookies() {
+  const cookieStore = cookies()
+  
+  return {
+    accessToken: cookieStore.get('auth-token')?.value,
+    refreshToken: cookieStore.get('refresh-token')?.value,
+  }
+}
+
+export async function clearAuthCookies() {
+  const cookieStore = cookies()
+  
+  cookieStore.delete('auth-token')
+  cookieStore.delete('refresh-token')
 }
 
 export async function getCurrentUser() {
