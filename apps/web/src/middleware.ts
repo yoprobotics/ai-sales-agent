@@ -45,8 +45,8 @@ export async function middleware(request: NextRequest) {
     );
   }
   
-  // Verify token
-  const user = await verifyAccessToken(accessToken);
+  // Verify token (no await needed as verifyAccessToken is synchronous)
+  const user = verifyAccessToken(accessToken);
   
   if (!user) {
     // Try to refresh token
