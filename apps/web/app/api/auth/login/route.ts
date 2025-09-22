@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password)
+    // Verify password - Fixed: using hashedPassword instead of password
+    const isPasswordValid = await bcrypt.compare(password, user.hashedPassword)
     
     if (!isPasswordValid) {
       return NextResponse.json(

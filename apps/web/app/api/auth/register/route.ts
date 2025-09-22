@@ -45,13 +45,13 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
     
-    // Create user
+    // Create user - Fixed: using hashedPassword field name
     const user = await prisma.user.create({
       data: {
         firstName,
         lastName,
         email: email.toLowerCase(),
-        password: hashedPassword,
+        hashedPassword, // Fixed: renamed from password to hashedPassword
         companyName: company,
         role: 'CLIENT',
         plan: 'STARTER',
