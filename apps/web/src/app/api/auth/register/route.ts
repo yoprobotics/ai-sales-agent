@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
 import { z } from 'zod'
+import { createAccessToken, createRefreshToken, hashPassword, setAuthCookies } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 
 // Registration schema
 const registerSchema = z.object({
@@ -14,23 +14,6 @@ const registerSchema = z.object({
   language: z.enum(['en', 'fr']).optional().default('en'),
   acceptTerms: z.boolean()
 })
-
-// Mock database - In production, use Prisma
-const users: any[] = [
-  {
-    id: '1',
-    email: 'demo@aisalesagent.com',
-    password: '$2a$10$mKJFQxpN7vX3gT9hW9Qy4.Zh8KzR6hl2I9XvZpQh4.a9Lv0K6tXEi', // Demo123!
-    firstName: 'John',
-    lastName: 'Doe',
-    companyName: 'Demo Company',
-    role: 'CLIENT',
-    plan: 'PRO',
-    dataRegion: 'EU',
-    language: 'en',
-    createdAt: new Date('2024-01-01')
-  }
-]
 
 export async function POST(request: Request) {
   try {
@@ -52,7 +35,10 @@ export async function POST(request: Request) {
     const data = validationResult.data
 
     // Check if email already exists
-    const existingUser = users.find(u => u.email.toLowerCase() === data.email.toLowerCase())
+    const existingUser = await prisma.user.findUnique({
+      where: { email: data.email.toLowerCase() }
+    })
+    
     if (existingUser) {
       return NextResponse.json(
         { success: false, message: 'Email already registered' },
@@ -69,41 +55,85 @@ export async function POST(request: Request) {
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(data.password, 10)
+    const hashedPassword = await hashPassword(data.password)
 
-    // Create new user
-    const newUser = {
-      id: String(users.length + 1),
-      email: data.email,
-      password: hashedPassword,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      companyName: data.companyName,
-      role: 'CLIENT',
-      plan: 'STARTER', // Default plan for new users
-      dataRegion: data.dataRegion,
-      language: data.language || 'en',
-      trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days trial
-      createdAt: new Date()
-    }
-
-    // Save to mock database
-    users.push(newUser)
-
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        id: newUser.id,
-        email: newUser.email,
-        role: newUser.role
+    // Create new user with subscription
+    const newUser = await prisma.user.create({
+      data: {
+        email: data.email.toLowerCase(),
+        password: hashedPassword,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        companyName: data.companyName,
+        role: 'CLIENT',
+        plan: 'STARTER', // Default plan for new users
+        dataRegion: data.dataRegion,
+        language: data.language,
+        timezone: 'UTC',
+        isEmailVerified: false, // Will need email verification
+        subscription: {
+          create: {
+            plan: 'STARTER',
+            status: 'trial',
+            trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days trial
+            usage: {
+              prospects: 0,
+              icps: 0,
+              sequences: 0,
+              messages: 0,
+            },
+            limits: {
+              prospects: 200,
+              icps: 1,
+              sequences: 1,
+              messages: 1000,
+              teamMembers: 1,
+            }
+          }
+        }
       },
-      process.env.JWT_SECRET || 'development-secret-key-change-in-production',
-      {
-        expiresIn: '7d'
+      include: {
+        subscription: true
       }
-    )
+    })
 
-    // Create user response (exclude password)
+    // Generate tokens
+    const accessToken = await createAccessToken(newUser)
+    const refreshToken = await createRefreshToken(newUser)
+
+    // Create session
+    await prisma.session.create({
+      data: {
+        userId: newUser.id,
+        token: accessToken,
+        refreshToken: refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+        userAgent: request.headers.get('user-agent') || 'unknown',
+      }
+    })
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: {
+        userId: newUser.id,
+        action: 'USER_REGISTERED',
+        resource: 'auth',
+        resourceId: newUser.id,
+        ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+        userAgent: request.headers.get('user-agent') || 'unknown',
+        metadata: {
+          email: newUser.email,
+          dataRegion: newUser.dataRegion,
+          language: newUser.language
+        }
+      }
+    })
+
+    // TODO: Send verification email via SendGrid
+    // await sendVerificationEmail(newUser.email, verificationToken)
+
+    // Create user response (exclude sensitive data)
     const userResponse = {
       id: newUser.id,
       email: newUser.email,
@@ -114,23 +144,18 @@ export async function POST(request: Request) {
       plan: newUser.plan,
       dataRegion: newUser.dataRegion,
       language: newUser.language,
-      trialEndsAt: newUser.trialEndsAt
+      trialEndsAt: newUser.subscription?.trialEndsAt
     }
+
+    // Set auth cookies
+    await setAuthCookies(accessToken, refreshToken)
 
     // Create response
     const response = NextResponse.json({
       success: true,
-      message: 'Account created successfully',
-      token,
+      message: 'Account created successfully. Please check your email to verify your account.',
+      token: accessToken,
       user: userResponse
-    })
-
-    // Set HTTP-only cookie
-    response.cookies.set('auth-token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 // 7 days
     })
 
     return response
