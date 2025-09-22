@@ -1,28 +1,47 @@
 import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
 import './globals.css'
+import { Toaster } from 'react-hot-toast'
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'AI Sales Agent - B2B Prospecting Platform',
-  description: 'AI-powered B2B prospecting platform with intelligent qualification, personalized messaging, and CRM pipeline management',
-  keywords: 'B2B, sales, prospecting, AI, CRM, pipeline, qualification',
+  title: 'AI Sales Agent - AI-Powered B2B Prospecting Platform',
+  description: 'Qualify leads, generate personalized messages, and manage your pipeline with AI - all in one platform.',
+  keywords: 'B2B sales, AI prospecting, lead qualification, email automation, CRM, sales pipeline',
   authors: [{ name: 'YoProbotics' }],
-  creator: 'YoProbotics',
-  publisher: 'YoProbotics',
-  robots: 'index, follow',
   openGraph: {
-    type: 'website',
-    title: 'AI Sales Agent',
-    description: 'AI-powered B2B prospecting platform',
+    title: 'AI Sales Agent - AI-Powered B2B Prospecting',
+    description: 'Transform your B2B sales process with AI-powered prospecting and qualification',
+    url: 'https://aisalesagent.com',
     siteName: 'AI Sales Agent',
+    images: [
+      {
+        url: 'https://aisalesagent.com/og-image.png',
+        width: 1200,
+        height: 630,
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AI Sales Agent',
-    description: 'AI-powered B2B prospecting platform',
-    creator: '@yoprobotics',
+    title: 'AI Sales Agent - AI-Powered B2B Prospecting',
+    description: 'Transform your B2B sales process with AI',
+    images: ['https://aisalesagent.com/twitter-image.png'],
   },
-  viewport: 'width=device-width, initial-scale=1',
-  themeColor: '#2563eb',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
 }
 
 export default function RootLayout({
@@ -31,11 +50,30 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🚀</text></svg>" />
-      </head>
-      <body>{children}</body>
+    <html lang="en" className={inter.className}>
+      <body className="antialiased">
+        {children}
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+            success: {
+              style: {
+                background: '#10b981',
+              },
+            },
+            error: {
+              style: {
+                background: '#ef4444',
+              },
+            },
+          }}
+        />
+      </body>
     </html>
   )
 }
