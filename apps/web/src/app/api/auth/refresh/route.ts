@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyRefreshToken, generateAccessToken, generateRefreshToken, setAuthCookies, getAuthFromCookies } from '@/lib/auth';
+import { verifyRefreshToken, createAccessToken, createRefreshToken, setAuthCookies, getAuthFromCookies } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Verify refresh token
-    const payload = verifyRefreshToken(refreshToken);
+    const payload = await verifyRefreshToken(refreshToken);
     
     // Check if payload is not null
     if (!payload) {
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       include: { user: true },
     });
     
-    // Using 'id' instead of 'userId' to match the JWT payload structure
+    // Using 'id' to match the JWT payload structure
     if (!session || session.userId !== payload.id) {
       return NextResponse.json(
         { error: 'Invalid refresh token' },
@@ -53,9 +53,9 @@ export async function POST(request: NextRequest) {
     
     const user = session.user;
     
-    // Generate new tokens
-    const newAccessToken = generateAccessToken(user);
-    const newRefreshToken = generateRefreshToken(user);
+    // Generate new tokens - using createAccessToken and createRefreshToken with await
+    const newAccessToken = await createAccessToken(user);
+    const newRefreshToken = await createRefreshToken(user);
     
     // Update session with new tokens
     await prisma.session.update({
