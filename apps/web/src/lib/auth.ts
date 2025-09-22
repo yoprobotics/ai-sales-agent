@@ -1,103 +1,105 @@
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import { User } from '@prisma/client';
-import { cookies } from 'next/headers';
+import { jwtVerify, SignJWT } from 'jose'
+import bcrypt from 'bcryptjs'
+import { cookies } from 'next/headers'
+import { prisma } from './prisma'
 
-const JWT_SECRET = process.env.JWT_SECRET!;
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+)
+
+const JWT_REFRESH_SECRET = new TextEncoder().encode(
+  process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'your-refresh-secret-key-change-in-production'
+)
 
 export interface JWTPayload {
-  id: string;
-  email: string;
-  role: string;
-  plan: string;
+  userId: string
+  email: string
+  role: string
+  iat?: number
+  exp?: number
+}
+
+export async function createAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp'>) {
+  return await new SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('15m')
+    .sign(JWT_SECRET)
+}
+
+export async function createRefreshToken(payload: Omit<JWTPayload, 'iat' | 'exp'>) {
+  return await new SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('7d')
+    .sign(JWT_REFRESH_SECRET)
+}
+
+export async function verifyAccessToken(token: string): Promise<JWTPayload> {
+  const { payload } = await jwtVerify(token, JWT_SECRET)
+  return payload as JWTPayload
+}
+
+export async function verifyRefreshToken(token: string): Promise<JWTPayload> {
+  const { payload } = await jwtVerify(token, JWT_REFRESH_SECRET)
+  return payload as JWTPayload
 }
 
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12);
+  return await bcrypt.hash(password, 12)
 }
 
-export async function verifyPassword(
-  password: string,
-  hashedPassword: string
-): Promise<boolean> {
-  return bcrypt.compare(password, hashedPassword);
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return await bcrypt.compare(password, hash)
 }
 
-export function generateAccessToken(user: Partial<User>): string {
-  return jwt.sign(
-    {
-      id: user.id,
-      email: user.email,
-      role: user.role || 'CLIENT',
-      plan: user.plan || 'STARTER',
-    },
-    JWT_SECRET,
-    { expiresIn: '15m' }
-  );
-}
-
-export function generateRefreshToken(user: Partial<User>): string {
-  return jwt.sign(
-    {
-      id: user.id,
-      email: user.email,
-    },
-    JWT_REFRESH_SECRET,
-    { expiresIn: '7d' }
-  );
-}
-
-export function verifyAccessToken(token: string): JWTPayload | null {
+export async function getCurrentUser() {
+  const cookieStore = cookies()
+  const token = cookieStore.get('auth-token')?.value
+  
+  if (!token) {
+    return null
+  }
+  
   try {
-    return jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const payload = await verifyAccessToken(token)
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        companyName: true,
+        plan: true,
+        language: true,
+        timezone: true,
+      },
+    })
+    
+    return user
   } catch (error) {
-    return null;
+    return null
   }
 }
 
-export function verifyRefreshToken(token: string): Pick<JWTPayload, 'id' | 'email'> | null {
-  try {
-    return jwt.verify(token, JWT_REFRESH_SECRET) as Pick<JWTPayload, 'id' | 'email'>;
-  } catch (error) {
-    return null;
+export async function requireAuth() {
+  const user = await getCurrentUser()
+  
+  if (!user) {
+    throw new Error('Unauthorized')
   }
+  
+  return user
 }
 
-export async function setAuthCookies(
-  accessToken: string,
-  refreshToken: string
-) {
-  const cookieStore = cookies();
+export async function requireRole(roles: string[]) {
+  const user = await requireAuth()
   
-  // Use consistent naming without underscores
-  cookieStore.set('accessToken', accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 15 * 60, // 15 minutes
-    path: '/',
-  });
+  if (!roles.includes(user.role)) {
+    throw new Error('Insufficient permissions')
+  }
   
-  cookieStore.set('refreshToken', refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60, // 7 days
-    path: '/',
-  });
-}
-
-export async function clearAuthCookies() {
-  const cookieStore = cookies();
-  cookieStore.delete('accessToken');
-  cookieStore.delete('refreshToken');
-}
-
-export async function getAuthFromCookies() {
-  const cookieStore = cookies();
-  const accessToken = cookieStore.get('accessToken')?.value;
-  const refreshToken = cookieStore.get('refreshToken')?.value;
-  
-  return { accessToken, refreshToken };
+  return user
 }

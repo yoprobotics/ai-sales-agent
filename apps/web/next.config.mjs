@@ -3,8 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   
-  // Configure src directory
-  // Next.js will now look for app directory in src/
+  // Experimental features
   experimental: {
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
   },
@@ -59,6 +58,19 @@ const nextConfig = {
         permanent: true,
       },
     ]
+  },
+  
+  // Webpack configuration for Prisma
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      }
+    }
+    return config
   },
 }
 
