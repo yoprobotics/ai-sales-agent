@@ -55,13 +55,13 @@ export async function POST(request: Request) {
     }
 
     // Hash password
-    const hashedPassword = await hashPassword(data.password)
+    const hashedPasswordValue = await hashPassword(data.password)
 
     // Create new user with subscription
     const newUser = await prisma.user.create({
       data: {
         email: data.email.toLowerCase(),
-        password: hashedPassword,
+        hashedPassword: hashedPasswordValue, // Using correct field name from schema
         firstName: data.firstName,
         lastName: data.lastName,
         companyName: data.companyName,

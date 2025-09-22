@@ -27,8 +27,8 @@ export async function POST(request: Request) {
       )
     }
 
-    // Verify password
-    const isValidPassword = await verifyPassword(password, user.password)
+    // Verify password - using hashedPassword field from database
+    const isValidPassword = await verifyPassword(password, user.hashedPassword)
     if (!isValidPassword) {
       return NextResponse.json(
         { success: false, message: 'Invalid email or password' },
