@@ -3,8 +3,10 @@
 import Link from 'next/link'
 import { useState } from 'react'
 
+type Language = 'en' | 'fr'
+
 export default function FeaturesPage() {
-  const [lang, setLang] = useState('en')
+  const [lang, setLang] = useState<Language>('en')
 
   const features = {
     en: [

@@ -3,8 +3,10 @@
 import Link from 'next/link'
 import { useState } from 'react'
 
+type Language = 'en' | 'fr'
+
 export default function CareersPage() {
-  const [lang, setLang] = useState('en')
+  const [lang, setLang] = useState<Language>('en')
 
   const content = {
     en: {
