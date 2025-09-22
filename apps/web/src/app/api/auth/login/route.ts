@@ -48,19 +48,14 @@ export async function POST(request: Request) {
     const accessToken = await createAccessToken(user)
     const refreshToken = await createRefreshToken(user)
 
-    // Create or update session
-    await prisma.session.upsert({
-      where: {
-        userId: user.id
-      },
-      update: {
-        token: accessToken,
-        refreshToken: refreshToken,
-        expiresAt: new Date(Date.now() + (rememberMe ? 30 : 7) * 24 * 60 * 60 * 1000),
-        ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
-        userAgent: request.headers.get('user-agent') || 'unknown',
-      },
-      create: {
+    // Delete existing sessions for this user (ensures single active session)
+    await prisma.session.deleteMany({
+      where: { userId: user.id }
+    })
+
+    // Create new session
+    await prisma.session.create({
+      data: {
         userId: user.id,
         token: accessToken,
         refreshToken: refreshToken,
