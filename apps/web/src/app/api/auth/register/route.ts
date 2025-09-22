@@ -57,43 +57,50 @@ export async function POST(request: Request) {
     // Hash password
     const hashedPasswordValue = await hashPassword(data.password)
 
-    // Create new user with subscription
+    // Create new user with subscription and usage tracking
     const newUser = await prisma.user.create({
       data: {
         email: data.email.toLowerCase(),
-        hashedPassword: hashedPasswordValue, // Using correct field name from schema
+        hashedPassword: hashedPasswordValue,
         firstName: data.firstName,
         lastName: data.lastName,
         companyName: data.companyName,
         role: 'CLIENT',
-        plan: 'STARTER', // Default plan for new users
+        plan: 'STARTER',
         dataRegion: data.dataRegion,
         language: data.language,
         timezone: 'UTC',
-        isEmailVerified: false, // Will need email verification
+        isEmailVerified: false,
         subscription: {
           create: {
             plan: 'STARTER',
-            status: 'trial',
+            status: 'TRIALING', // Correct enum value
             trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days trial
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
             usage: {
-              prospects: 0,
-              icps: 0,
-              sequences: 0,
-              messages: 0,
-            },
-            limits: {
-              prospects: 200,
-              icps: 1,
-              sequences: 1,
-              messages: 1000,
-              teamMembers: 1,
+              create: {
+                prospectsUsed: 0,
+                prospectsLimit: 200,
+                icpsUsed: 0,
+                icpsLimit: 1,
+                sequencesUsed: 0,
+                sequencesLimit: 1,
+                messagesUsed: 0,
+                messagesLimit: 1000,
+                periodStart: new Date(),
+                periodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Monthly period
+              }
             }
           }
         }
       },
       include: {
-        subscription: true
+        subscription: {
+          include: {
+            usage: true
+          }
+        }
       }
     })
 
@@ -144,7 +151,12 @@ export async function POST(request: Request) {
       plan: newUser.plan,
       dataRegion: newUser.dataRegion,
       language: newUser.language,
-      trialEndsAt: newUser.subscription?.trialEndsAt
+      trialEndsAt: newUser.subscription?.trialEndsAt,
+      subscription: {
+        status: newUser.subscription?.status,
+        trialEndsAt: newUser.subscription?.trialEndsAt,
+        usage: newUser.subscription?.usage
+      }
     }
 
     // Set auth cookies
