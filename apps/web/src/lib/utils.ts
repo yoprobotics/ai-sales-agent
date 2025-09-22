@@ -1,70 +1,50 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
+/**
+ * Merge class names with tailwind-merge
+ */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatDate(date: Date | string, locale: string = 'en-US'): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return new Intl.DateTimeFormat(locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(d)
+/**
+ * Format relative time (e.g., "2 hours ago")
+ */
+export function formatRelativeTime(date: Date): string {
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+  
+  if (diffInSeconds < 60) {
+    return 'just now'
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60)
+    return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600)
+    return `${hours} hour${hours > 1 ? 's' : ''} ago`
+  } else if (diffInSeconds < 2592000) {
+    const days = Math.floor(diffInSeconds / 86400)
+    return `${days} day${days > 1 ? 's' : ''} ago`
+  } else if (diffInSeconds < 31536000) {
+    const months = Math.floor(diffInSeconds / 2592000)
+    return `${months} month${months > 1 ? 's' : ''} ago`
+  } else {
+    const years = Math.floor(diffInSeconds / 31536000)
+    return `${years} year${years > 1 ? 's' : ''} ago`
+  }
 }
 
-export function formatDateTime(date: Date | string, locale: string = 'en-US'): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return new Intl.DateTimeFormat(locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(d)
-}
-
-export function formatCurrency(amount: number, currency: string = 'USD', locale: string = 'en-US'): string {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-  }).format(amount)
-}
-
-export function formatNumber(number: number, locale: string = 'en-US'): string {
-  return new Intl.NumberFormat(locale).format(number)
-}
-
-export function formatPercentage(value: number, decimals: number = 1): string {
-  return `${(value * 100).toFixed(decimals)}%`
-}
-
-export function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
-
-export function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase()
-}
-
-export function initials(firstName: string, lastName: string): string {
-  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
-}
-
-export function truncate(text: string, length: number): string {
-  if (text.length <= length) return text
-  return text.slice(0, length).trim() + '...'
-}
-
+/**
+ * Sleep/delay function for async operations
+ */
 export function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+/**
+ * Debounce function
+ */
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
@@ -77,11 +57,14 @@ export function debounce<T extends (...args: any[]) => any>(
   }
 }
 
+/**
+ * Throttle function
+ */
 export function throttle<T extends (...args: any[]) => any>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {
-  let inThrottle: boolean = false
+  let inThrottle = false
   
   return (...args: Parameters<T>) => {
     if (!inThrottle) {
@@ -92,48 +75,14 @@ export function throttle<T extends (...args: any[]) => any>(
   }
 }
 
-export function groupBy<T, K extends keyof any>(
-  array: T[],
-  getKey: (item: T) => K
-): Record<K, T[]> {
-  return array.reduce((groups, item) => {
-    const key = getKey(item)
-    const group = groups[key] || []
-    group.push(item)
-    groups[key] = group
-    return groups
-  }, {} as Record<K, T[]>)
-}
-
-export function unique<T>(array: T[]): T[] {
-  return Array.from(new Set(array))
-}
-
-export function chunk<T>(array: T[], size: number): T[][] {
-  const chunks: T[][] = []
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size))
+/**
+ * Generate a random ID
+ */
+export function generateId(length: number = 8): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  let result = ''
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
   }
-  return chunks
-}
-
-export function isEmpty(value: any): boolean {
-  if (value == null) return true
-  if (Array.isArray(value) || typeof value === 'string') return value.length === 0
-  if (typeof value === 'object') return Object.keys(value).length === 0
-  return false
-}
-
-export function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email)
-}
-
-export function isValidUrl(url: string): boolean {
-  try {
-    new URL(url)
-    return true
-  } catch {
-    return false
-  }
+  return result
 }
