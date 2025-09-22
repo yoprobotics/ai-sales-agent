@@ -1,144 +1,198 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import toast from 'react-hot-toast'
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+
+const loginSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required'),
+  rememberMe: z.boolean().optional()
+})
+
+type LoginFormData = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    rememberMe: false,
-  });
+  const router = useRouter()
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [lang, setLang] = useState('en')
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
+  const {
+    register,
+    handleSubmit,
+    formState: { errors }
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema)
+  })
 
+  const onSubmit = async (data: LoginFormData) => {
+    setIsLoading(true)
+    
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
 
-      const data = await response.json();
+      const result = await response.json()
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+      if (response.ok) {
+        // Store token in localStorage for now (will move to httpOnly cookies)
+        localStorage.setItem('token', result.token)
+        localStorage.setItem('user', JSON.stringify(result.user))
+        
+        toast.success(lang === 'en' ? 'Login successful!' : 'Connexion réussie!')
+        router.push('/dashboard')
+      } else {
+        toast.error(result.message || (lang === 'en' ? 'Login failed' : 'Échec de connexion'))
       }
-
-      // Redirect to dashboard
-      router.push('/dashboard');
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      toast.error(lang === 'en' ? 'Something went wrong' : 'Une erreur est survenue')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to AI Sales Agent
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
-              create a new account
-            </Link>
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+      {/* Language Toggle */}
+      <button
+        onClick={() => setLang(lang === 'en' ? 'fr' : 'en')}
+        className="absolute top-4 right-4 text-sm text-gray-600 hover:text-gray-900"
+      >
+        {lang === 'en' ? '🇫🇷 FR' : '🇬🇧 EN'}
+      </button>
+
+      <div className="max-w-md w-full">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center justify-center">
+            <span className="text-4xl">🚀</span>
+            <span className="ml-3 text-3xl font-bold text-gray-900">AI Sales Agent</span>
+          </Link>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="flex">
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">Error</h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    <p>{error}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          <div className="rounded-md shadow-sm -space-y-px">
+
+        {/* Login Card */}
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {lang === 'en' ? 'Welcome back' : 'Bon retour'}
+          </h2>
+          <p className="text-gray-600 mb-6">
+            {lang === 'en' 
+              ? 'Enter your credentials to access your account'
+              : 'Entrez vos identifiants pour accéder à votre compte'}
+          </p>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            {/* Email Field */}
             <div>
-              <label htmlFor="email-address" className="sr-only">
-                Email address
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {lang === 'en' ? 'Email Address' : 'Adresse Email'}
               </label>
               <input
-                id="email-address"
-                name="email"
                 type="email"
-                autoComplete="email"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                {...register('email')}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder={lang === 'en' ? 'you@company.com' : 'vous@entreprise.com'}
+                disabled={isLoading}
               />
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+              )}
             </div>
+
+            {/* Password Field */}
             <div>
-              <label htmlFor="password" className="sr-only">
-                Password
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {lang === 'en' ? 'Password' : 'Mot de passe'}
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                checked={formData.rememberMe}
-                onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })}
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                Remember me
-              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  {...register('password')}
+                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  placeholder="••••••••"
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? (
+                    <EyeSlashIcon className="h-5 w-5" />
+                  ) : (
+                    <EyeIcon className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+              )}
             </div>
 
-            <div className="text-sm">
-              <Link href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
-                Forgot your password?
+            {/* Remember Me & Forgot Password */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  {...register('rememberMe')}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  disabled={isLoading}
+                />
+                <label className="ml-2 text-sm text-gray-600">
+                  {lang === 'en' ? 'Remember me' : 'Se souvenir de moi'}
+                </label>
+              </div>
+              <Link
+                href="/forgot-password"
+                className="text-sm text-blue-600 hover:text-blue-700"
+              >
+                {lang === 'en' ? 'Forgot password?' : 'Mot de passe oublié?'}
               </Link>
             </div>
-          </div>
 
-          <div>
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {isLoading ? 'Signing in...' : 'Sign in'}
+              {isLoading 
+                ? (lang === 'en' ? 'Signing in...' : 'Connexion...') 
+                : (lang === 'en' ? 'Sign in' : 'Se connecter')}
             </button>
+          </form>
+
+          {/* Demo Account Info */}
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-900 font-medium mb-2">
+              {lang === 'en' ? 'Demo Account:' : 'Compte Démo:'}
+            </p>
+            <p className="text-xs text-blue-700">Email: demo@aisalesagent.com</p>
+            <p className="text-xs text-blue-700">Password: Demo123!</p>
           </div>
-        </form>
+
+          {/* Sign Up Link */}
+          <p className="mt-6 text-center text-sm text-gray-600">
+            {lang === 'en' ? "Don't have an account?" : "Pas encore de compte?"}
+            {' '}
+            <Link
+              href="/register"
+              className="font-medium text-blue-600 hover:text-blue-700"
+            >
+              {lang === 'en' ? 'Sign up for free' : 'Créer un compte gratuit'}
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
-  );
+  )
 }
