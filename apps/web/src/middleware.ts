@@ -31,7 +31,7 @@ export async function middleware(request: NextRequest) {
   }
   
   // Check for access token
-  const accessToken = request.cookies.get('accessToken')?.value;
+  const accessToken = request.cookies.get('auth-token')?.value;
   
   if (!accessToken) {
     // Redirect to login for web pages
@@ -45,12 +45,39 @@ export async function middleware(request: NextRequest) {
     );
   }
   
-  // Verify token (no await needed as verifyAccessToken is synchronous)
-  const user = verifyAccessToken(accessToken);
-  
-  if (!user) {
+  try {
+    // Verify token (await is needed as verifyAccessToken is async)
+    const user = await verifyAccessToken(accessToken);
+    
+    // Check admin access
+    if (ADMIN_PATHS.some(adminPath => path.startsWith(adminPath))) {
+      if (user.role !== 'ADMIN') {
+        if (!path.startsWith('/api/')) {
+          return NextResponse.redirect(new URL('/dashboard', request.url));
+        }
+        return NextResponse.json(
+          { error: 'Admin access required' },
+          { status: 403 }
+        );
+      }
+    }
+    
+    // Add user to request headers for use in API routes
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-user-id', user.id);
+    requestHeaders.set('x-user-email', user.email);
+    requestHeaders.set('x-user-role', user.role);
+    requestHeaders.set('x-user-userid', user.userId);
+    
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+  } catch (error) {
+    // Token is invalid or expired
     // Try to refresh token
-    const refreshToken = request.cookies.get('refreshToken')?.value;
+    const refreshToken = request.cookies.get('refresh-token')?.value;
     
     if (refreshToken) {
       // Redirect to refresh endpoint
@@ -68,32 +95,6 @@ export async function middleware(request: NextRequest) {
       { status: 401 }
     );
   }
-  
-  // Check admin access
-  if (ADMIN_PATHS.some(adminPath => path.startsWith(adminPath))) {
-    if (user.role !== 'ADMIN') {
-      if (!path.startsWith('/api/')) {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-  }
-  
-  // Add user to request headers for use in API routes
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-user-id', user.id);
-  requestHeaders.set('x-user-email', user.email);
-  requestHeaders.set('x-user-role', user.role);
-  requestHeaders.set('x-user-plan', user.plan);
-  
-  return NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  });
 }
 
 export const config = {
