@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 
 export default function TermsPage() {
-  const [lang, setLang] = useState('en')
+  const [lang, setLang] = useState<'en' | 'fr'>('en')
 
   const content = {
     en: {

@@ -3,8 +3,10 @@
 import Link from 'next/link'
 import { useState } from 'react'
 
+type Language = 'en' | 'fr'
+
 export default function ContactPage() {
-  const [lang, setLang] = useState('en')
+  const [lang, setLang] = useState<Language>('en')
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -51,7 +53,7 @@ export default function ContactPage() {
 
   const t = content[lang]
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     // Handle form submission
     alert(lang === 'en' ? 'Message sent!' : 'Message envoyé!')

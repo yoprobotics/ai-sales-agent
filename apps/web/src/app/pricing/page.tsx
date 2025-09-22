@@ -3,9 +3,12 @@
 import Link from 'next/link'
 import { useState } from 'react'
 
+type Language = 'en' | 'fr'
+type BillingPeriod = 'monthly' | 'yearly'
+
 export default function PricingPage() {
-  const [lang, setLang] = useState('en')
-  const [billing, setBilling] = useState('monthly')
+  const [lang, setLang] = useState<Language>('en')
+  const [billing, setBilling] = useState<BillingPeriod>('monthly')
 
   const plans = {
     en: [
