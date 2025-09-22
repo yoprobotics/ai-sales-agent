@@ -1,61 +1,67 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getAuthFromCookies, verifyAccessToken } from '@/lib/auth';
+import { NextResponse } from 'next/server'
+import { headers } from 'next/headers'
+import jwt from 'jsonwebtoken'
 
-export async function GET(request: NextRequest) {
+// Mock user data
+const DEMO_USER = {
+  id: '1',
+  email: 'demo@aisalesagent.com',
+  firstName: 'John',
+  lastName: 'Doe',
+  companyName: 'Demo Company',
+  role: 'CLIENT',
+  plan: 'PRO',
+  dataRegion: 'EU',
+  language: 'en'
+}
+
+export async function GET() {
   try {
-    const { accessToken } = await getAuthFromCookies();
+    // Get token from Authorization header or cookie
+    const headersList = await headers()
+    const authorization = headersList.get('authorization')
+    const cookieToken = headersList.get('cookie')?.match(/auth-token=([^;]+)/)?.[1]
     
-    if (!accessToken) {
+    const token = authorization?.replace('Bearer ', '') || cookieToken
+
+    if (!token) {
       return NextResponse.json(
-        { error: 'Not authenticated' },
+        { success: false, message: 'No token provided' },
         { status: 401 }
-      );
+      )
     }
-    
-    // Verify access token
-    const payload = verifyAccessToken(accessToken);
-    
-    // Check if payload is valid
-    if (!payload || !payload.id) {
+
+    // Verify token
+    try {
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || 'development-secret-key-change-in-production'
+      ) as any
+
+      // In production, fetch user from database using decoded.id
+      // For demo, return mock user if ID matches
+      if (decoded.id === '1') {
+        return NextResponse.json({
+          success: true,
+          user: DEMO_USER
+        })
+      }
+
       return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 401 }
-      );
-    }
-    
-    // Get user data - using 'id' field from JWT payload
-    const user = await prisma.user.findUnique({
-      where: { id: payload.id },
-      select: {
-        id: true,
-        email: true,
-        isEmailVerified: true,
-        firstName: true,
-        lastName: true,
-        companyName: true,
-        role: true,
-        dataRegion: true,
-        language: true,
-        timezone: true,
-        createdAt: true,
-        lastLoginAt: true,
-      },
-    });
-    
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
+        { success: false, message: 'User not found' },
         { status: 404 }
-      );
+      )
+    } catch (error) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid token' },
+        { status: 401 }
+      )
     }
-    
-    return NextResponse.json({ user });
   } catch (error) {
-    console.error('Get user error:', error);
+    console.error('Auth check error:', error)
     return NextResponse.json(
-      { error: 'Invalid or expired token' },
-      { status: 401 }
-    );
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
